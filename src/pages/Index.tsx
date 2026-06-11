@@ -31,6 +31,7 @@ import { HomeScreen } from "@/components/layout/HomeScreen";
 import { OnboardingBanner } from "@/components/shared/OnboardingBanner";
 import { SessionLogView } from "@/components/history/SessionLogView";
 import { AnalyzingView } from "@/components/shared/AnalyzingView";
+import { SearchTermHarvesting } from "@/components/harvest/SearchTermHarvesting";
 import * as XLSX from "xlsx";
 
 interface Message {

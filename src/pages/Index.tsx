@@ -94,7 +94,7 @@ const Index = () => {
   }>({ open: false, type: null, data: null });
   const [lastDecisionFileName, setLastDecisionFileName] = useState<string>("");
   const [decisionFailureCount, setDecisionFailureCount] = useState<number>(0);
-  const [activeModule, setActiveModule] = useState<"bleeders_1" | "bleeders_2" | "lifetime_bleeders" | null>(null);
+  const [activeModule, setActiveModule] = useState<"bleeders_1" | "bleeders_2" | "lifetime_bleeders" | "search_harvest" | null>(null);
   const [bleederMode, setBleederMode] = useState<"standard" | "lifetime">("standard");
   const [showHelpDrawer, setShowHelpDrawer] = useState(false);
   // Bleeders 2.0 state
@@ -679,6 +679,8 @@ const Index = () => {
       setLifetimeResult(null);
       setChatState("awaiting-upload");
       setShowUpload(false);
+    } else if (module === "search_harvest") {
+      setActiveModule("search_harvest");
     } else {
       setActiveModule(null);
     }
@@ -726,6 +728,7 @@ const Index = () => {
     if (activeModule === "bleeders_1") return "Bleeders 1.0";
     if (activeModule === "bleeders_2") return "Bleeders 2.0";
     if (activeModule === "lifetime_bleeders") return "Lifetime Audit";
+    if (activeModule === "search_harvest") return "Search Term Harvesting";
     return "Home";
   };
 

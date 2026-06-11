@@ -227,7 +227,29 @@ export function buildBulkRowsFromCanonical(inputs: CanonicalBulkInputRow[]): Bui
     });
   }
 
-  return out;
+  // Deduplicate: same key = same logical row. For cutBid, keep the lower bid.
+  const seen = new Map<string, BuiltBulkRow>();
+  for (const r of out) {
+    const key = [
+      r.recordType,
+      r.action,
+      r.campaignId || "",
+      r.adGroupId || "",
+      r.keywordText || "",
+      r.targetingText || "",
+      r.matchType || "",
+    ].join("||");
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, r);
+      continue;
+    }
+    if (r.action === "cutBid" && typeof r.bid === "number" && typeof existing.bid === "number" && r.bid < existing.bid) {
+      seen.set(key, r);
+    }
+  }
+
+  return Array.from(seen.values());
 }
 
 export function bulkRowToArray(r: BuiltBulkRow): any[] {

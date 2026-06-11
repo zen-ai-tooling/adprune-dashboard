@@ -477,6 +477,72 @@ export async function generateBulkUpdate(request: BulkUpdateRequest): Promise<Bu
     );
   }
 
+  // ---------- 3.5) Deduplicate output rows to prevent Amazon upload errors ----------
+  {
+    const seen = new Map<string, BulkUpdateRow>();
+    const keyFor = (r: BulkUpdateRow): string => {
+      const base = [
+        r.recordType || "",
+        r.campaignName || "",
+        r.adGroupName || "",
+        r.keywordText || "",
+        r.targetingText || "",
+        r.matchType || "",
+      ].join("||");
+      const op = (r.operation || "").toLowerCase();
+      const recLower = (r.recordType || "").toLowerCase();
+      if (op === "create" || recLower.includes("negative")) {
+        return `CREATE||${base}`;
+      }
+      // cut bid rows are updates with a bid; dedupe ignoring bid + state, keep lowest bid
+      if (typeof r.bid === "number") {
+        return `BID||${base}`;
+      }
+      // pause / update rows
+      return `UPDATE||${base}||${(r.state || "").toLowerCase()}`;
+    };
+
+    let removed = 0;
+    for (const row of outputRows) {
+      const key = keyFor(row);
+      const existing = seen.get(key);
+      if (!existing) {
+        seen.set(key, row);
+        continue;
+      }
+      removed++;
+      // For cut bid: keep the one with the lower bid
+      if (typeof row.bid === "number" && typeof existing.bid === "number" && row.bid < existing.bid) {
+        seen.set(key, row);
+      }
+    }
+
+    if (removed > 0) {
+      const deduped = Array.from(seen.values());
+      // Recompute summary counts from deduped rows
+      summary.pausedCount = 0;
+      summary.negativesCreated = 0;
+      summary.bidsCutCount = 0;
+      summary.campaignsTurnedOff = 0;
+      for (const r of deduped) {
+        const recLower = (r.recordType || "").toLowerCase();
+        const op = (r.operation || "").toLowerCase();
+        if (op === "create" || recLower.includes("negative")) {
+          summary.negativesCreated++;
+        } else if (typeof r.bid === "number") {
+          summary.bidsCutCount++;
+        } else if (recLower.includes("campaign") && (r.state || "").toLowerCase() === "paused" && !r.adGroupName) {
+          summary.campaignsTurnedOff++;
+        } else {
+          summary.pausedCount++;
+        }
+      }
+      outputRows.length = 0;
+      outputRows.push(...deduped);
+      validation.warnings.push(`Removed ${removed} duplicate row${removed === 1 ? "" : "s"} to prevent Amazon upload errors`);
+    }
+  }
+
   // ---------- 4) Build Amazon Bulksheets 2.0 ExcelJS output ----------
   const workbook = new ExcelJS.Workbook();
 

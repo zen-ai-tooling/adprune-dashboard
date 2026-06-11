@@ -3,7 +3,7 @@ import { ArrowLeft, Clock, Plus, Check, ChevronsUpDown } from "lucide-react";
 import { useClient } from "@/context/ClientContext";
 import type { Bleeder2Track } from "@/components/bleeders2/TrackSelector";
 
-type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | null;
+type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | "search_harvest" | null;
 
 interface AppSidebarProps {
   activeModule: ActiveModule;
@@ -30,6 +30,7 @@ const MODULES: { id: Exclude<ActiveModule, null>; label: string; dot: string }[]
   { id: "bleeders_1", label: "Bleeders 1.0", dot: "#EF4444" },
   { id: "bleeders_2", label: "Bleeders 2.0", dot: "#F59E0B" },
   { id: "lifetime_bleeders", label: "Lifetime Audit", dot: "#8B5CF6" },
+  { id: "search_harvest", label: "Search Term Harvesting", dot: "#10B981" },
 ];
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (

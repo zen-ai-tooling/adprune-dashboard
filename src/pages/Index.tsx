@@ -1260,7 +1260,11 @@ const Index = () => {
               </div>
             )}
 
+            {/* SEARCH TERM HARVESTING */}
+            {activeModule === "search_harvest" && <SearchTermHarvesting />}
+
             <div ref={messagesEndRef} />
+
           </div>
         </main>
       </div>

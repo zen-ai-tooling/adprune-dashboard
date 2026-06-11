@@ -13,7 +13,7 @@ import {
 import { useHistory } from "@/context/HistoryContext";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
-type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | null;
+type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | "search_harvest" | null;
 
 interface HomeScreenProps {
   onSelectModule: (module: ActiveModule) => void;
@@ -71,6 +71,14 @@ const MODULES = [
     dot: "hsl(265 70% 60%)",
     tag: "Audit",
     historyKey: "lifetime",
+  },
+  {
+    id: "search_harvest" as const,
+    name: "Search Term Harvesting",
+    desc: "Promote proven converters to exact-match and block source cannibalization",
+    dot: "hsl(160 84% 39%)",
+    tag: "Growth",
+    historyKey: "search_harvest",
   },
 ];
 

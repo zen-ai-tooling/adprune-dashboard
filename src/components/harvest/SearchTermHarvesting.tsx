@@ -272,6 +272,7 @@ export const SearchTermHarvesting: React.FC = () => {
           dispatch({ type: "reset" });
           setBulkIdIndex(null);
           setBulkFileName("");
+          setHasExported(false);
         }}
       />
     );
@@ -291,11 +292,17 @@ export const SearchTermHarvesting: React.FC = () => {
             { label: "Review & select terms", status: "active" as const },
             { label: "Export bulk file", status: "pending" as const },
           ]
-        : [
-            { label: "Upload reports", status: "complete" as const },
-            { label: "Review & select terms", status: "complete" as const },
-            { label: "Export bulk file", status: "active" as const },
-          ];
+        : hasExported
+          ? [
+              { label: "Upload reports", status: "complete" as const },
+              { label: "Review & select terms", status: "complete" as const },
+              { label: "Export bulk file", status: "complete" as const },
+            ]
+          : [
+              { label: "Upload reports", status: "complete" as const },
+              { label: "Review & select terms", status: "complete" as const },
+              { label: "Export bulk file", status: "active" as const },
+            ];
 
   const TopHeader = (
     <div className="space-y-3 pt-2">

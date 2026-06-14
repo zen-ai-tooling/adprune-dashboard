@@ -250,10 +250,15 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
     }
   }
 
-  console.log("[B2 BULK] keywordIndex size:", keywordIndex.size);
-  console.log("[B2 BULK] sampleKeywordKeys:", sampleKeywordKeys);
-  console.log("[B2 BULK] targetingIndex size:", targetingIndex.size);
-  console.log("[B2 BULK] sampleTargetingKeys:", sampleTargetingKeys);
+  if (DEBUG_BULK_INDEX) {
+    console.log("[B2 BULK] keywordIndex size:", keywordIndex.size);
+    console.log("[B2 BULK] sampleKeywordKeys:", sampleKeywordKeys);
+    console.log("[B2 BULK] targetingIndex size:", targetingIndex.size);
+    console.log("[B2 BULK] sampleTargetingKeys:", sampleTargetingKeys);
+  }
+
+  return {
+    findCampaign(product: "SP" | "SB" | "SD", campaignName: string): BulkIdMatch | undefined {
 
   return {
     findCampaign(product: "SP" | "SB" | "SD", campaignName: string): BulkIdMatch | undefined {

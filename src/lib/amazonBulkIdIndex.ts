@@ -81,8 +81,13 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
   const campaignIndex = new Map<string, BulkIdMatch>();
   const keywordIndex = new Map<string, BulkIdMatch>();
   const targetingIndex = new Map<string, BulkIdMatch>();
+  const campaignNamesByProduct: Record<"SP" | "SB" | "SD", Set<string>> = {
+    SP: new Set(),
+    SB: new Set(),
+    SD: new Set(),
+  };
 
-  console.log("[B2 BULK] building bulk ID index, sheets:", workbook.SheetNames);
+  if (DEBUG_BULK_INDEX) console.log("[B2 BULK] building bulk ID index, sheets:", workbook.SheetNames);
 
   // DEBUG: collect a few sample keys so we can compare against lookups later
   const sampleKeywordKeys: string[] = [];

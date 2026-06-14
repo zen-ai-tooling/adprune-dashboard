@@ -259,9 +259,6 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
 
   return {
     findCampaign(product: "SP" | "SB" | "SD", campaignName: string): BulkIdMatch | undefined {
-
-  return {
-    findCampaign(product: "SP" | "SB" | "SD", campaignName: string): BulkIdMatch | undefined {
       const key = `${product}|${normalizeText(campaignName)}`;
       return campaignIndex.get(key);
     },
@@ -286,6 +283,10 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
     ): BulkIdMatch | undefined {
       const key = `${product}|${normalizeText(campaignName)}|${normalizeText(adGroupName)}|${normalizeText(targetingText)}`;
       return targetingIndex.get(key);
+    },
+
+    listCampaignNames(product: "SP" | "SB" | "SD"): string[] {
+      return Array.from(campaignNamesByProduct[product]).sort();
     },
   };
 }

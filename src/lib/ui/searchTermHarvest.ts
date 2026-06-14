@@ -360,7 +360,7 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: srcMatch?.campaignId ?? "",
         campaignName: r.campaignName,
-        adGroupId: srcMatch?.adGroupId ?? "",
+        adGroupId: "",
         adGroupName: r.adGroupName,
         keywordText: "",
         targetingText: expr,

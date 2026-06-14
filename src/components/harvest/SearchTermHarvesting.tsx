@@ -107,14 +107,28 @@ export const SearchTermHarvesting: React.FC = () => {
   const [minOrders, setMinOrders] = useState<number>(2);
   const [maxAcos, setMaxAcos] = useState<number>(35);
   const [defaultBid, setDefaultBid] = useState<number>(0.75);
+  const [maxBid, setMaxBid] = useState<number>(2.25);
   const [query, setQuery] = useState("");
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
+  const [hasExported, setHasExported] = useState(false);
   const [completion, setCompletion] = useState<{
     fileName: string;
     summary: HarvestExportSummary;
     onDownload: () => void;
   } | null>(null);
+
+  // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
+  const userTouchedMaxBidRef = useRef(false);
+  React.useEffect(() => {
+    if (!userTouchedMaxBidRef.current) setMaxBid(Number((defaultBid * 3).toFixed(2)));
+  }, [defaultBid]);
+
+  // Unique SP campaign names for destination autocomplete.
+  const destinationOptions = useMemo(
+    () => (bulkIdIndex ? bulkIdIndex.listCampaignNames("SP") : []),
+    [bulkIdIndex],
+  );
 
   const handleStFile = async (file: File) => {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {

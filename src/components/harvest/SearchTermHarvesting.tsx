@@ -112,6 +112,11 @@ export const SearchTermHarvesting: React.FC = () => {
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
   const [hasExported, setHasExported] = useState(false);
+  const [sortField, setSortField] = useState<"clicks" | "spend" | "orders" | "sales" | "acos">("orders");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const [selectAllFiltered, setSelectAllFiltered] = useState(false);
+  const PAGE_SIZE = 50;
   const [completion, setCompletion] = useState<{
     fileName: string;
     summary: HarvestExportSummary;

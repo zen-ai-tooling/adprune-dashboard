@@ -25,7 +25,10 @@ export interface BulkIdIndex {
     adGroupName: string,
     targetingText: string,
   ): BulkIdMatch | undefined;
+  listCampaignNames(product: "SP" | "SB" | "SD"): string[];
 }
+
+const DEBUG_BULK_INDEX = false;
 
 /* =========================
  * Helpers

@@ -199,6 +199,7 @@ export interface HarvestExportSummary {
 export interface BulkExportInput {
   rows: HarvestRow[];
   defaultBid: number;
+  maxBid?: number;
   dateRangeLabel?: string; // e.g. "60d"
   bulkIdIndex?: BulkIdIndex;
 }

@@ -254,7 +254,7 @@ export const SearchTermHarvesting: React.FC = () => {
     return (
       <CompletionView
         fileName={completion.fileName}
-        impactHeadline={`${summary.exactRows + summary.negativeRows} bulk rows staged`}
+        impactHeadline={`${summary.exactRows} proven search term${summary.exactRows === 1 ? "" : "s"} promoted to exact match`}
         impactSubtitle={`Harvested ${summary.exactRows} exact target${summary.exactRows === 1 ? "" : "s"} and ${summary.negativeRows} negative${summary.negativeRows === 1 ? "" : "s"} across ${summary.campaignsAffected} campaign${summary.campaignsAffected === 1 ? "" : "s"}.`}
         summary={[
           { label: "Exact targets", value: String(summary.exactRows) },

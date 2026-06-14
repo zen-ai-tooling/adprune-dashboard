@@ -279,6 +279,7 @@ export const SearchTermHarvesting: React.FC = () => {
   };
 
   const harvestedCount = state.rows.filter((r) => r.harvested && !r.dismissed).length;
+  const allPagedSelected = pagedRows.length > 0 && pagedRows.every((r) => state.selected.has(r.id));
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => state.selected.has(r.id));
 
   // Completion view

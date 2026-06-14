@@ -801,6 +801,70 @@ export const SearchTermHarvesting: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {allPagedSelected && filtered.length > pagedRows.length && (
+          <div className="px-4 py-2 text-[12.5px] text-[#374151] bg-[#EFF6FF] border-t border-[#BFDBFE] flex items-center justify-center gap-2">
+            {selectAllFiltered ? (
+              <>
+                <span>
+                  All <strong className="font-mono-nums">{filtered.length.toLocaleString()}</strong> filtered terms
+                  selected.
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectAllFiltered(false);
+                    dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: false });
+                  }}
+                  className="text-[#0071E3] hover:underline font-medium"
+                >
+                  Clear selection
+                </button>
+              </>
+            ) : (
+              <>
+                <span>
+                  All <strong className="font-mono-nums">{pagedRows.length}</strong> terms on this page are selected.
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectAllFiltered(true);
+                    dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: true });
+                  }}
+                  className="text-[#0071E3] hover:underline font-medium"
+                >
+                  Select all {filtered.length.toLocaleString()} filtered terms
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {showPagination && (
+          <div className="px-4 py-2.5 border-t border-[#E5E7EB] bg-[#FAFBFC] flex items-center justify-between text-[12.5px] text-[#6B7280]">
+            <span>
+              Showing <strong className="text-[#111827] font-mono-nums">{pageStart + 1}</strong>–
+              <strong className="text-[#111827] font-mono-nums">{pageEnd}</strong> of{" "}
+              <strong className="text-[#111827] font-mono-nums">{filtered.length.toLocaleString()}</strong> terms
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="h-7 px-2.5 rounded-md border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press disabled:opacity-40 disabled:cursor-not-allowed text-[12px] font-medium"
+              >
+                Previous
+              </button>
+              <span className="font-mono-nums text-[12px] text-[#6B7280]">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="h-7 px-2.5 rounded-md border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press disabled:opacity-40 disabled:cursor-not-allowed text-[12px] font-medium"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

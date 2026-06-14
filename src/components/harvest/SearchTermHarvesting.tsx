@@ -186,14 +186,42 @@ export const SearchTermHarvesting: React.FC = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return state.rows.filter((r) => {
+    const base = state.rows.filter((r) => {
       if (r.dismissed) return false;
       if (r.orders < minOrders) return false;
       if (r.acos > maxAcos / 100 && r.orders > 0) return false;
       if (q && !r.cleanedTerm.includes(q) && !r.campaignName.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [state.rows, minOrders, maxAcos, query]);
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...base].sort((a, b) => {
+      const av = (a[sortField] as number) ?? 0;
+      const bv = (b[sortField] as number) ?? 0;
+      return (av - bv) * dir;
+    });
+  }, [state.rows, minOrders, maxAcos, query, sortField, sortDir]);
+
+  // Pagination — reset to page 0 whenever filters change.
+  React.useEffect(() => {
+    setPage(0);
+    setSelectAllFiltered(false);
+  }, [minOrders, maxAcos, query, sortField, sortDir, state.rows.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageStart = currentPage * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, filtered.length);
+  const pagedRows = filtered.slice(pageStart, pageEnd);
+  const showPagination = filtered.length > PAGE_SIZE;
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
 
   // Merge-aware: same term across multiple sources is fine. No blocking; we'll generate 1 exact + many negatives.
   const handleHarvest = (ids: string[]) => {

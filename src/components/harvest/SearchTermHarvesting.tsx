@@ -206,6 +206,16 @@ export const SearchTermHarvesting: React.FC = () => {
       return;
     }
     dispatch({ type: "harvest", ids });
+    const emptyAdGroup = ids.filter((id) => {
+      const r = state.rows.find((x) => x.id === id);
+      return r && !r.adGroupName.trim();
+    }).length;
+    if (emptyAdGroup > 0) {
+      toast({
+        title: "Heads up",
+        description: `${emptyAdGroup} row(s) have no Ad Group — negatives will apply campaign-wide in the source. Verify this is intended.`,
+      });
+    }
     toast({
       title: ids.length === 1 ? "Harvest staged" : `${ids.length} harvests staged`,
       description: "Exact target + negative exact queued.",
@@ -221,6 +231,7 @@ export const SearchTermHarvesting: React.FC = () => {
     const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
       rows: harvested,
       defaultBid,
+      maxBid,
       bulkIdIndex: bulkIdIndex ?? undefined,
     });
     const stamp = new Date().toISOString().slice(0, 10);
@@ -230,6 +241,7 @@ export const SearchTermHarvesting: React.FC = () => {
     warnings.forEach((w) =>
       toast({ title: "Heads up", description: w, variant: w.includes("not found") ? "destructive" : undefined }),
     );
+    setHasExported(true);
     setCompletion({ fileName, summary, onDownload: doDownload });
   };
 

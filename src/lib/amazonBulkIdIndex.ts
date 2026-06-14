@@ -197,6 +197,9 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
       const productTargetingId = productTargetingIdCol !== -1 ? String(row[productTargetingIdCol] ?? "").trim() : "";
       const matchType = matchTypeCol !== -1 ? String(row[matchTypeCol] ?? "").trim() : "";
 
+      // Track campaign names per product
+      campaignNamesByProduct[product].add(campaignName);
+
       // Index campaign
       const campaignKey = `${product}|${normalizeText(campaignName)}`;
       if (!campaignIndex.has(campaignKey) && campaignId) {

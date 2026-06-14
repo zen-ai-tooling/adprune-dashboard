@@ -564,6 +564,14 @@ export const SearchTermHarvesting: React.FC = () => {
         </div>
       </div>
 
+      {destinationOptions.length > 0 && (
+        <datalist id="harvest-destination-campaigns">
+          {destinationOptions.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      )}
+
       {/* Table */}
       <div className="surface-card overflow-hidden border border-[#E5E7EB] rounded-xl">
         <div className="overflow-x-auto">

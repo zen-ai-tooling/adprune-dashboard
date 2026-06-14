@@ -459,6 +459,25 @@ export const SearchTermHarvesting: React.FC = () => {
             />
           </div>
 
+          <div className="flex flex-col">
+            <label
+              className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5"
+              title="Hard cap on per-keyword bid. Defaults to 3× Default Bid."
+            >
+              Max Bid ($)
+            </label>
+            <Input
+              type="number"
+              step="0.05"
+              value={maxBid}
+              onChange={(e) => {
+                userTouchedMaxBidRef.current = true;
+                setMaxBid(Number(e.target.value) || 0);
+              }}
+              className="w-28 font-mono-nums"
+            />
+          </div>
+
           <div className="flex flex-col flex-1 min-w-[200px]">
             <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
               Search

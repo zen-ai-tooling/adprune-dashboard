@@ -9,18 +9,23 @@ import {
   Search,
   Loader2,
   FileText,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WorkflowStepBreadcrumb } from "@/components/shared/WorkflowStepBreadcrumb";
+import { CompletionView } from "@/components/shared/CompletionView";
 import {
   parseSearchTermReport,
+  parseReferenceBulkFile,
   buildHarvestBulkWorkbook,
   downloadWorkbook,
-  guessDestinationCampaign,
   type HarvestRow,
-  type LookbackPreset,
+  type HarvestExportSummary,
 } from "@/lib/ui/searchTermHarvest";
+import type { BulkIdIndex } from "@/lib/amazonBulkIdIndex";
 
 // ── Local-only reducer (no global state touched) ──
 type Action =
@@ -82,33 +87,43 @@ const reducer = (state: State, action: Action): State => {
   }
 };
 
-const LOOKBACK_OPTIONS: { id: LookbackPreset; label: string; help: string }[] = [
-  { id: "30d", label: "Last 30 days", help: "Recent signal, ignores attribution lag" },
-  { id: "60d", label: "Last 60 days (recommended)", help: "Best balance: enough signal, fits 14d attribution" },
-  { id: "90d", label: "Last 90 days", help: "Conservative — only mature converters" },
-  { id: "custom", label: "Custom (file is pre-filtered)", help: "Use as uploaded" },
-];
-
 const fmtUSD = (n: number) => `$${n.toFixed(2)}`;
 const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
+const PARSE_MESSAGES = [
+  "Reading search term report…",
+  "Detecting headers & metrics…",
+  "Classifying ASINs vs keywords…",
+  "Auto-mapping destination campaigns…",
+];
+
 export const SearchTermHarvesting: React.FC = () => {
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const stInputRef = useRef<HTMLInputElement>(null);
+  const bulkInputRef = useRef<HTMLInputElement>(null);
   const [state, dispatch] = useReducer(reducer, { rows: [], selected: new Set<string>(), fileName: "" });
   const [isParsing, setIsParsing] = useState(false);
-  const [lookback, setLookback] = useState<LookbackPreset>("60d");
-  const [minSales, setMinSales] = useState<number>(1);
+  const [parseStep, setParseStep] = useState(0);
+  const [minOrders, setMinOrders] = useState<number>(2);
   const [maxAcos, setMaxAcos] = useState<number>(35);
   const [defaultBid, setDefaultBid] = useState<number>(0.75);
   const [query, setQuery] = useState("");
+  const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
+  const [bulkFileName, setBulkFileName] = useState<string>("");
+  const [completion, setCompletion] = useState<{
+    fileName: string;
+    summary: HarvestExportSummary;
+    onDownload: () => void;
+  } | null>(null);
 
-  const handleFile = async (file: File) => {
+  const handleStFile = async (file: File) => {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
       toast({ title: "Invalid file type", description: "Use .xlsx, .xls, or .csv", variant: "destructive" });
       return;
     }
     setIsParsing(true);
+    setParseStep(0);
+    const tick = setInterval(() => setParseStep((p) => Math.min(p + 1, PARSE_MESSAGES.length - 1)), 350);
     try {
       const { rows, totalRowsRead } = await parseSearchTermReport(file);
       dispatch({ type: "load", rows, fileName: file.name });
@@ -119,45 +134,51 @@ export const SearchTermHarvesting: React.FC = () => {
     } catch (e: any) {
       toast({ title: "Parse failed", description: e.message ?? "Unknown error", variant: "destructive" });
     } finally {
+      clearInterval(tick);
       setIsParsing(false);
     }
   };
 
-  // Filter pipeline
+  const handleBulkFile = async (file: File) => {
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      toast({ title: "Invalid file type", description: "Reference bulk must be .xlsx", variant: "destructive" });
+      return;
+    }
+    try {
+      const idx = await parseReferenceBulkFile(file);
+      setBulkIdIndex(idx);
+      setBulkFileName(file.name);
+      toast({ title: "Reference bulk loaded", description: "Campaign & Ad Group IDs will be resolved on export." });
+    } catch (e: any) {
+      toast({ title: "Bulk parse failed", description: e.message ?? "Unknown error", variant: "destructive" });
+    }
+  };
+
+  // Aggregation: count how many source campaigns each cleanedTerm appears in
+  const sourceCountByTerm = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    state.rows.forEach((r) => {
+      if (r.dismissed) return;
+      if (!m.has(r.cleanedTerm)) m.set(r.cleanedTerm, new Set());
+      m.get(r.cleanedTerm)!.add(r.campaignName);
+    });
+    return m;
+  }, [state.rows]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return state.rows.filter((r) => {
       if (r.dismissed) return false;
-      if (r.sales < minSales) return false;
+      if (r.orders < minOrders) return false;
       if (r.acos > maxAcos / 100 && r.orders > 0) return false;
-      if (r.orders === 0 && minSales > 0) return false;
       if (q && !r.cleanedTerm.includes(q) && !r.campaignName.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [state.rows, minSales, maxAcos, query]);
+  }, [state.rows, minOrders, maxAcos, query]);
 
-  const lookbackLabel = LOOKBACK_OPTIONS.find((o) => o.id === lookback)?.label ?? lookback;
-
-  // Conflict pre-flight: same cleanedTerm targeted from >1 source campaign to same destination
-  const detectConflicts = (ids: string[]): string[] => {
-    const map = new Map<string, Set<string>>();
-    ids.forEach((id) => {
-      const r = state.rows.find((x) => x.id === id);
-      if (!r) return;
-      const key = `${r.cleanedTerm}||${r.destinationCampaign}`;
-      if (!map.has(key)) map.set(key, new Set());
-      map.get(key)!.add(r.campaignName);
-    });
-    const conflicts: string[] = [];
-    map.forEach((srcs, key) => {
-      if (srcs.size > 1) conflicts.push(key.split("||")[0]);
-    });
-    return conflicts;
-  };
-
+  // Merge-aware: same term across multiple sources is fine. No blocking; we'll generate 1 exact + many negatives.
   const handleHarvest = (ids: string[]) => {
     if (!ids.length) return;
-    // Step 1 stage exact creation; Step 2 stage negative — simulate atomic with rollback on any invalid row
     const invalid = ids.filter((id) => {
       const r = state.rows.find((x) => x.id === id);
       return !r || !r.destinationCampaign.trim() || !r.cleanedTerm;
@@ -165,16 +186,7 @@ export const SearchTermHarvesting: React.FC = () => {
     if (invalid.length) {
       toast({
         title: "Harvest rolled back",
-        description: `Step 2 failed for ${invalid.length} row(s) — missing destination or term. No staging applied.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    const conflicts = detectConflicts(ids);
-    if (conflicts.length) {
-      toast({
-        title: "Bulk pre-flight blocked",
-        description: `${conflicts.length} term(s) target the same destination from multiple source campaigns: ${conflicts.slice(0, 2).join(", ")}${conflicts.length > 2 ? "…" : ""}`,
+        description: `${invalid.length} row(s) missing destination or term. No staging applied.`,
         variant: "destructive",
       });
       return;
@@ -182,7 +194,7 @@ export const SearchTermHarvesting: React.FC = () => {
     dispatch({ type: "harvest", ids });
     toast({
       title: ids.length === 1 ? "Harvest staged" : `${ids.length} harvests staged`,
-      description: "Exact target + negative exact queued atomically",
+      description: "Exact target + negative exact queued.",
     });
   };
 
@@ -192,55 +204,167 @@ export const SearchTermHarvesting: React.FC = () => {
       toast({ title: "Nothing to export", description: "Harvest some terms first", variant: "destructive" });
       return;
     }
-    const wb = buildHarvestBulkWorkbook({ rows: harvested, defaultBid, lookbackLabel });
+    const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
+      rows: harvested,
+      defaultBid,
+      bulkIdIndex: bulkIdIndex ?? undefined,
+    });
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadWorkbook(wb, `Harvest_Bulk_${stamp}.xlsx`);
-    toast({ title: "Bulk file downloaded", description: `${harvested.length} harvests × 2 rows each` });
+    const fileName = `Harvest_Bulk_60d_${stamp}.xlsx`;
+    const doDownload = () => downloadWorkbook(workbook, fileName);
+    doDownload();
+    warnings.forEach((w) =>
+      toast({ title: "Heads up", description: w, variant: w.includes("not found") ? "destructive" : undefined }),
+    );
+    setCompletion({ fileName, summary, onDownload: doDownload });
   };
 
   const harvestedCount = state.rows.filter((r) => r.harvested && !r.dismissed).length;
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => state.selected.has(r.id));
 
-  // ── Render ──
+  // Completion view
+  if (completion) {
+    const { summary } = completion;
+    return (
+      <CompletionView
+        fileName={completion.fileName}
+        impactHeadline={`${summary.exactRows + summary.negativeRows} bulk rows staged`}
+        impactSubtitle={`Harvested ${summary.exactRows} exact target${summary.exactRows === 1 ? "" : "s"} and ${summary.negativeRows} negative${summary.negativeRows === 1 ? "" : "s"} across ${summary.campaignsAffected} campaign${summary.campaignsAffected === 1 ? "" : "s"}.`}
+        summary={[
+          { label: "Exact targets", value: String(summary.exactRows) },
+          { label: "Negatives created", value: String(summary.negativeRows) },
+          { label: "Campaigns affected", value: String(summary.campaignsAffected) },
+          { label: "Duplicates removed", value: String(summary.duplicateExactsRemoved) },
+        ]}
+        breakdown={[
+          { label: "Exact targets", count: summary.exactRows, color: "#10B981" },
+          { label: "Negatives", count: summary.negativeRows, color: "#6366F1" },
+        ]}
+        onDownload={completion.onDownload}
+        onStartNew={() => {
+          setCompletion(null);
+          dispatch({ type: "reset" });
+          setBulkIdIndex(null);
+          setBulkFileName("");
+        }}
+      />
+    );
+  }
 
+  // ── Step header (always visible) ──
+  const stepperState =
+    state.rows.length === 0
+      ? [
+          { label: "Upload reports", status: "active" as const },
+          { label: "Review & select terms", status: "pending" as const },
+          { label: "Export bulk file", status: "pending" as const },
+        ]
+      : harvestedCount === 0
+        ? [
+            { label: "Upload reports", status: "complete" as const },
+            { label: "Review & select terms", status: "active" as const },
+            { label: "Export bulk file", status: "pending" as const },
+          ]
+        : [
+            { label: "Upload reports", status: "complete" as const },
+            { label: "Review & select terms", status: "complete" as const },
+            { label: "Export bulk file", status: "active" as const },
+          ];
+
+  const TopHeader = (
+    <div className="space-y-3 pt-2">
+      <div className="flex items-center gap-1.5 text-[12px] text-[#6B7280] flex-wrap">
+        <span>AdPrune</span>
+        <ChevronRight className="w-3 h-3 opacity-50" />
+        <span>Modules</span>
+        <ChevronRight className="w-3 h-3 opacity-50" />
+        <span className="text-foreground font-medium">Search Term Harvesting</span>
+      </div>
+      <div className="surface-card px-4 py-3">
+        <WorkflowStepBreadcrumb steps={stepperState} />
+      </div>
+    </div>
+  );
+
+  // ── Upload view ──
   if (!state.rows.length) {
     return (
-      <div className="w-full pt-4">
+      <div className="w-full space-y-4">
+        {TopHeader}
         <div className="surface-card p-6 max-w-2xl mx-auto">
           <h2 className="text-[20px] font-semibold text-foreground tracking-tight">Search Term Harvesting</h2>
           <p className="text-[13px] text-[#6B7280] mt-1.5">
-            Upload your SP Search Term Report (.xlsx). We'll find proven converters, stage them as exact-match
-            targets in your destination campaigns, and auto-block them in the source to prevent cannibalization.
+            Find proven search-term converters, stage them as exact-match targets in your destination campaigns, and
+            auto-block them in the source to prevent cannibalization.
           </p>
 
+          <div className="mt-4 flex items-start gap-2 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] p-3 text-[12.5px] text-[#1E40AF]">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Export your SP Search Term Report from Amazon with a 60-day date range</strong> for best results
+              (enough signal, aligns with 14-day attribution).
+            </span>
+          </div>
+
+          {/* File 1 */}
           <div
-            className="mt-5 rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-10 cursor-pointer btn-press"
+            className="mt-5 rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-8 cursor-pointer btn-press"
             style={{ borderColor: "#D1D5DB", background: "#FAFBFC" }}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => stInputRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
               const f = e.dataTransfer.files?.[0];
-              if (f) handleFile(f);
+              if (f) handleStFile(f);
             }}
           >
             {isParsing ? (
-              <Loader2 className="w-8 h-8 text-[#9CA3AF] animate-spin" />
+              <>
+                <Loader2 className="w-8 h-8 text-[#A855F7] animate-spin" />
+                <p className="text-[13px] font-medium text-[#374151] mt-3">{PARSE_MESSAGES[parseStep]}</p>
+              </>
             ) : (
-              <Upload className="w-8 h-8 text-[#9CA3AF]" strokeWidth={1.6} />
+              <>
+                <Upload className="w-8 h-8 text-[#9CA3AF]" strokeWidth={1.6} />
+                <p className="text-[14px] font-medium text-[#374151] mt-3">
+                  1. Drop SP Search Term Report or click to browse
+                </p>
+                <p className="text-[12px] text-[#9CA3AF] mt-1">.xlsx, .xls, .csv up to 20MB</p>
+              </>
             )}
-            <p className="text-[14px] font-medium text-[#374151] mt-3">
-              {isParsing ? "Parsing report…" : "Drop SP Search Term Report or click to browse"}
-            </p>
-            <p className="text-[12px] text-[#9CA3AF] mt-1">.xlsx, .xls, .csv up to 20MB</p>
             <input
-              ref={fileInputRef}
+              ref={stInputRef}
               type="file"
               accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) handleFile(f);
+                if (f) handleStFile(f);
+              }}
+            />
+          </div>
+
+          {/* File 2 — optional */}
+          <div
+            className="mt-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-6 cursor-pointer btn-press"
+            style={{ borderColor: "#E5E7EB", background: "#FAFBFC" }}
+            onClick={() => bulkInputRef.current?.click()}
+          >
+            <FileText className="w-6 h-6 text-[#9CA3AF]" strokeWidth={1.6} />
+            <p className="text-[13px] font-medium text-[#374151] mt-2">
+              2. (Optional) Drop 30-day Bulk Operations export
+            </p>
+            <p className="text-[11.5px] text-[#9CA3AF] mt-1">
+              {bulkFileName ? `✓ ${bulkFileName}` : "Resolves Campaign IDs & Ad Group IDs for direct upload."}
+            </p>
+            <input
+              ref={bulkInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleBulkFile(f);
               }}
             />
           </div>
@@ -248,9 +372,8 @@ export const SearchTermHarvesting: React.FC = () => {
           <div className="mt-5 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-3.5 text-[12px] text-[#374151] flex gap-2">
             <FileText className="w-4 h-4 text-[#6B7280] flex-shrink-0 mt-0.5" strokeWidth={1.8} />
             <div>
-              <strong className="text-[#111827]">Tip:</strong> Export an SP Search Term report from Amazon Ads
-              Console with a 60-day window. The tool expects columns: Campaign Name, Ad Group Name, Advertised ASIN,
-              Customer Search Term, Clicks, Spend, Orders, Sales, ACoS.
+              <strong className="text-[#111827]">Expected columns:</strong> Campaign Name, Ad Group Name, Advertised
+              ASIN, Customer Search Term, Clicks, Spend, Orders, Sales, ACoS.
             </div>
           </div>
         </div>
@@ -258,39 +381,22 @@ export const SearchTermHarvesting: React.FC = () => {
     );
   }
 
+  // ── Results view ──
   return (
-    <div className="w-full space-y-4 pt-2">
+    <div className="w-full space-y-4">
+      {TopHeader}
+
       {/* Control bar */}
       <div className="surface-card p-4">
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex flex-col">
             <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
-              Lookback Window
-            </label>
-            <select
-              value={lookback}
-              onChange={(e) => setLookback(e.target.value as LookbackPreset)}
-              className="h-9 px-3 text-[13px] rounded-md border border-[#E5E7EB] bg-white text-[#111827] outline-none focus:ring-2 focus:ring-primary"
-            >
-              {LOOKBACK_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <span className="text-[11px] text-[#9CA3AF] mt-1">
-              {LOOKBACK_OPTIONS.find((o) => o.id === lookback)?.help}
-            </span>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
-              Min Sales ($)
+              Min Orders
             </label>
             <Input
               type="number"
-              value={minSales}
-              onChange={(e) => setMinSales(Number(e.target.value) || 0)}
+              value={minOrders}
+              onChange={(e) => setMinOrders(Number(e.target.value) || 0)}
               className="w-28 font-mono-nums"
             />
           </div>
@@ -334,13 +440,35 @@ export const SearchTermHarvesting: React.FC = () => {
               />
             </div>
           </div>
+
+          <div className="flex flex-col">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
+              Reference Bulk
+            </label>
+            <button
+              onClick={() => bulkInputRef.current?.click()}
+              className="h-9 px-3 rounded-md text-[12px] font-medium border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press inline-flex items-center gap-1.5"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {bulkIdIndex ? "✓ Loaded" : "Attach .xlsx"}
+            </button>
+            <input
+              ref={bulkInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleBulkFile(f);
+              }}
+            />
+          </div>
         </div>
 
         <div className="mt-4 pt-3 border-t border-[#F3F4F6] flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 text-[12.5px] text-[#374151]">
             <span>
               <strong className="text-[#111827] font-mono-nums">{filtered.length.toLocaleString()}</strong> qualified
-              terms
             </span>
             <span className="text-[#D1D5DB]">·</span>
             <span>
@@ -385,15 +513,15 @@ export const SearchTermHarvesting: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="surface-card overflow-hidden">
+      <div className="surface-card overflow-hidden border border-[#E5E7EB] rounded-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]" style={{ tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: "36px" }} />
               <col style={{ width: "180px" }} />
               <col style={{ width: "110px" }} />
-              <col style={{ width: "260px" }} />
-              <col style={{ width: "80px" }} />
+              <col style={{ width: "280px" }} />
+              <col style={{ width: "70px" }} />
               <col style={{ width: "80px" }} />
               <col style={{ width: "70px" }} />
               <col style={{ width: "80px" }} />
@@ -436,12 +564,13 @@ export const SearchTermHarvesting: React.FC = () => {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={11} className="px-3 py-12 text-center text-[13px] text-[#9CA3AF]">
-                    No terms match the current thresholds. Loosen Min Sales or Max ACoS.
+                    No terms match the current thresholds. Loosen Min Orders or Max ACoS.
                   </td>
                 </tr>
               )}
               {filtered.map((r, i) => {
                 const isSelected = state.selected.has(r.id);
+                const otherSources = (sourceCountByTerm.get(r.cleanedTerm)?.size ?? 1) - 1;
                 return (
                   <tr
                     key={r.id}
@@ -466,7 +595,7 @@ export const SearchTermHarvesting: React.FC = () => {
                       {r.advertisedASIN}
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
                           style={{
@@ -482,6 +611,15 @@ export const SearchTermHarvesting: React.FC = () => {
                         {r.lengthWarning && (
                           <span title="Review length for negative match (>10 words or 80 chars)">
                             <AlertTriangle className="w-3.5 h-3.5 text-[#F59E0B] flex-shrink-0" strokeWidth={2} />
+                          </span>
+                        )}
+                        {otherSources > 0 && (
+                          <span
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ background: "#F3E8FF", color: "#6B21A8" }}
+                            title="Same search term seen from multiple source campaigns. One exact target + a negative per source will be staged."
+                          >
+                            +{otherSources} src
                           </span>
                         )}
                       </div>

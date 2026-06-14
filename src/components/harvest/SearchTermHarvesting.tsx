@@ -112,6 +112,11 @@ export const SearchTermHarvesting: React.FC = () => {
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
   const [hasExported, setHasExported] = useState(false);
+  const [sortField, setSortField] = useState<"clicks" | "spend" | "orders" | "sales" | "acos">("orders");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const [selectAllFiltered, setSelectAllFiltered] = useState(false);
+  const PAGE_SIZE = 50;
   const [completion, setCompletion] = useState<{
     fileName: string;
     summary: HarvestExportSummary;
@@ -181,14 +186,42 @@ export const SearchTermHarvesting: React.FC = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return state.rows.filter((r) => {
+    const base = state.rows.filter((r) => {
       if (r.dismissed) return false;
       if (r.orders < minOrders) return false;
       if (r.acos > maxAcos / 100 && r.orders > 0) return false;
       if (q && !r.cleanedTerm.includes(q) && !r.campaignName.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [state.rows, minOrders, maxAcos, query]);
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...base].sort((a, b) => {
+      const av = (a[sortField] as number) ?? 0;
+      const bv = (b[sortField] as number) ?? 0;
+      return (av - bv) * dir;
+    });
+  }, [state.rows, minOrders, maxAcos, query, sortField, sortDir]);
+
+  // Pagination — reset to page 0 whenever filters change.
+  React.useEffect(() => {
+    setPage(0);
+    setSelectAllFiltered(false);
+  }, [minOrders, maxAcos, query, sortField, sortDir, state.rows.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageStart = currentPage * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, filtered.length);
+  const pagedRows = filtered.slice(pageStart, pageEnd);
+  const showPagination = filtered.length > PAGE_SIZE;
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
 
   // Merge-aware: same term across multiple sources is fine. No blocking; we'll generate 1 exact + many negatives.
   const handleHarvest = (ids: string[]) => {
@@ -246,6 +279,7 @@ export const SearchTermHarvesting: React.FC = () => {
   };
 
   const harvestedCount = state.rows.filter((r) => r.harvested && !r.dismissed).length;
+  const allPagedSelected = pagedRows.length > 0 && pagedRows.every((r) => state.selected.has(r.id));
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => state.selected.has(r.id));
 
   // Completion view
@@ -254,7 +288,7 @@ export const SearchTermHarvesting: React.FC = () => {
     return (
       <CompletionView
         fileName={completion.fileName}
-        impactHeadline={`${summary.exactRows + summary.negativeRows} bulk rows staged`}
+        impactHeadline={`${summary.exactRows} proven search term${summary.exactRows === 1 ? "" : "s"} promoted to exact match`}
         impactSubtitle={`Harvested ${summary.exactRows} exact target${summary.exactRows === 1 ? "" : "s"} and ${summary.negativeRows} negative${summary.negativeRows === 1 ? "" : "s"} across ${summary.campaignsAffected} campaign${summary.campaignsAffected === 1 ? "" : "s"}.`}
         summary={[
           { label: "Exact targets", value: String(summary.exactRows) },
@@ -593,31 +627,53 @@ export const SearchTermHarvesting: React.FC = () => {
               <tr className="border-b border-[#E5E7EB]">
                 <th className="px-3 py-2.5 text-left">
                   <Checkbox
-                    checked={allFilteredSelected}
-                    onCheckedChange={(v) =>
-                      dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: !!v })
-                    }
+                    checked={allPagedSelected}
+                    onCheckedChange={(v) => {
+                      dispatch({ type: "select-many", ids: pagedRows.map((r) => r.id), value: !!v });
+                      if (!v) setSelectAllFiltered(false);
+                    }}
                   />
                 </th>
-                {[
-                  "Source",
-                  "ASIN",
-                  "Search Term",
-                  "Clicks",
-                  "Spend",
-                  "Orders",
-                  "Sales",
-                  "ACoS",
-                  "Destination",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6B7280]"
-                  >
-                    {h}
-                  </th>
-                ))}
+                {(
+                  [
+                    { label: "Source", field: null },
+                    { label: "ASIN", field: null },
+                    { label: "Search Term", field: null },
+                    { label: "Clicks", field: "clicks" as const },
+                    { label: "Spend", field: "spend" as const },
+                    { label: "Orders", field: "orders" as const },
+                    { label: "Sales", field: "sales" as const },
+                    { label: "ACoS", field: "acos" as const },
+                    { label: "Destination", field: null },
+                    { label: "Actions", field: null },
+                  ]
+                ).map((col) => {
+                  const isActive = col.field && sortField === col.field;
+                  const arrow = !col.field ? null : isActive ? (sortDir === "asc" ? "▲" : "▼") : "▾";
+                  return (
+                    <th
+                      key={col.label}
+                      onClick={col.field ? () => toggleSort(col.field!) : undefined}
+                      className={`px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] ${
+                        col.field ? "cursor-pointer select-none group" : ""
+                      }`}
+                      style={{ color: isActive ? "#0071E3" : "#6B7280" }}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {col.field && (
+                          <span
+                            className={`text-[9px] ${
+                              isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+                            }`}
+                          >
+                            {arrow}
+                          </span>
+                        )}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -628,7 +684,7 @@ export const SearchTermHarvesting: React.FC = () => {
                   </td>
                 </tr>
               )}
-              {filtered.map((r, i) => {
+              {pagedRows.map((r, i) => {
                 const isSelected = state.selected.has(r.id);
                 const otherSources = (sourceCountByTerm.get(r.cleanedTerm)?.size ?? 1) - 1;
                 return (
@@ -745,6 +801,70 @@ export const SearchTermHarvesting: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {allPagedSelected && filtered.length > pagedRows.length && (
+          <div className="px-4 py-2 text-[12.5px] text-[#374151] bg-[#EFF6FF] border-t border-[#BFDBFE] flex items-center justify-center gap-2">
+            {selectAllFiltered ? (
+              <>
+                <span>
+                  All <strong className="font-mono-nums">{filtered.length.toLocaleString()}</strong> filtered terms
+                  selected.
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectAllFiltered(false);
+                    dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: false });
+                  }}
+                  className="text-[#0071E3] hover:underline font-medium"
+                >
+                  Clear selection
+                </button>
+              </>
+            ) : (
+              <>
+                <span>
+                  All <strong className="font-mono-nums">{pagedRows.length}</strong> terms on this page are selected.
+                </span>
+                <button
+                  onClick={() => {
+                    setSelectAllFiltered(true);
+                    dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: true });
+                  }}
+                  className="text-[#0071E3] hover:underline font-medium"
+                >
+                  Select all {filtered.length.toLocaleString()} filtered terms
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {showPagination && (
+          <div className="px-4 py-2.5 border-t border-[#E5E7EB] bg-[#FAFBFC] flex items-center justify-between text-[12.5px] text-[#6B7280]">
+            <span>
+              Showing <strong className="text-[#111827] font-mono-nums">{pageStart + 1}</strong>–
+              <strong className="text-[#111827] font-mono-nums">{pageEnd}</strong> of{" "}
+              <strong className="text-[#111827] font-mono-nums">{filtered.length.toLocaleString()}</strong> terms
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="h-7 px-2.5 rounded-md border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press disabled:opacity-40 disabled:cursor-not-allowed text-[12px] font-medium"
+              >
+                Previous
+              </button>
+              <span className="font-mono-nums text-[12px] text-[#6B7280]">
+                Page {currentPage + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="h-7 px-2.5 rounded-md border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press disabled:opacity-40 disabled:cursor-not-allowed text-[12px] font-medium"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

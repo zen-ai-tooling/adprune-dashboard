@@ -53,7 +53,7 @@ export const exceedsLength = (s: string): boolean => {
 
 export const guessDestinationCampaign = (source: string): string => {
   if (!source) return "";
-  const replaced = source.replace(/(_)(Auto|Broad|Phrase|Discovery|Research)(_|$)/i, "$1Exact$3");
+  const replaced = source.replace(/([-_ ])(Auto|Broad|Phrase|Discovery|Research)([-_ ]|$)/i, "$1Exact$3");
   if (replaced !== source) return replaced;
   return `${source}_Exact_Harvest`;
 };
@@ -344,7 +344,7 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: srcMatch?.campaignId ?? "",
         campaignName: r.campaignName,
-        adGroupId: srcMatch?.adGroupId ?? "",
+        adGroupId: "",
         adGroupName: r.adGroupName,
         keywordText: r.cleanedTerm,
         targetingText: "",
@@ -360,7 +360,7 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: srcMatch?.campaignId ?? "",
         campaignName: r.campaignName,
-        adGroupId: srcMatch?.adGroupId ?? "",
+        adGroupId: "",
         adGroupName: r.adGroupName,
         keywordText: "",
         targetingText: expr,

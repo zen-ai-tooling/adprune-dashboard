@@ -2,6 +2,11 @@
 // Lives under src/lib/ui/ so it does not touch any "sacred" engines.
 
 import * as XLSX from "xlsx";
+import {
+  BULK_UPDATE_HEADERS,
+  type AmazonProduct,
+} from "@/lib/amazonBulkBuilder";
+import { buildBulkIdIndexFromWorkbook, type BulkIdIndex } from "@/lib/amazonBulkIdIndex";
 
 export type LookbackPreset = "30d" | "60d" | "90d" | "custom";
 
@@ -34,10 +39,7 @@ const ASIN_REGEX = /^B0[A-Z0-9]{8}$/i;
 
 export const sanitizeTerm = (s: string): string => {
   if (!s) return "";
-  return String(s)
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(s).toLowerCase().replace(/\s+/g, " ").trim();
 };
 
 export const isASIN = (s: string): boolean => ASIN_REGEX.test(s.trim());
@@ -49,10 +51,6 @@ export const exceedsLength = (s: string): boolean => {
   return words.length > 10;
 };
 
-// Smart destination guesser:
-// `BrandABC_Auto_Blenders` → `BrandABC_Exact_Blenders`
-// `BrandABC_Broad_X` → `BrandABC_Exact_X`
-// fallback: append `_Exact_Harvest`
 export const guessDestinationCampaign = (source: string): string => {
   if (!source) return "";
   const replaced = source.replace(/(_)(Auto|Broad|Phrase|Discovery|Research)(_|$)/i, "$1Exact$3");
@@ -112,7 +110,6 @@ export const parseSearchTermReport = async (file: File): Promise<ParseResult> =>
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
 
-  // Prefer a sheet that smells like a search term report.
   const candidate =
     wb.SheetNames.find((n) => /search\s*term/i.test(n)) ??
     wb.SheetNames.find((n) => /sp.*search/i.test(n)) ??
@@ -124,7 +121,6 @@ export const parseSearchTermReport = async (file: File): Promise<ParseResult> =>
     return { rows: [], sheetUsed: candidate, totalRowsRead: 0 };
   }
 
-  // Find header row (first row with >=4 non-empty cells)
   let headerIdx = 0;
   for (let i = 0; i < Math.min(aoa.length, 10); i++) {
     if (aoa[i].filter((c) => String(c ?? "").trim()).length >= 4) {
@@ -149,7 +145,7 @@ export const parseSearchTermReport = async (file: File): Promise<ParseResult> =>
     const asin = String(row[colMap.advertisedASIN ?? -1] ?? "").trim();
 
     let acos = num(row[colMap.acos ?? -1]);
-    if (acos > 5) acos = acos / 100; // percent → ratio
+    if (acos > 5) acos = acos / 100;
 
     const raw: RawSearchTermRow = {
       campaignName: campaign,
@@ -183,112 +179,227 @@ export const parseSearchTermReport = async (file: File): Promise<ParseResult> =>
   return { rows, sheetUsed: candidate, totalRowsRead: aoa.length - headerIdx - 1 };
 };
 
-// ── Amazon Bulk Export ──
-// Produces two-row pairs per harvest:
-//   Row A: Keyword/Product Targeting CREATE in destination campaign (Exact match)
-//   Row B: Negative Exact in source campaign/ad group (cannibalization guard)
+// ── Reference Bulk File parser → BulkIdIndex ──
+export const parseReferenceBulkFile = async (file: File): Promise<BulkIdIndex> => {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  return buildBulkIdIndexFromWorkbook(wb);
+};
+
+// ── Amazon Bulksheets 2.0 Export ──
+
+export interface HarvestExportSummary {
+  exactRows: number;
+  negativeRows: number;
+  duplicateExactsRemoved: number;
+  destinationsMissing: number;
+  campaignsAffected: number;
+}
 
 export interface BulkExportInput {
   rows: HarvestRow[];
   defaultBid: number;
-  lookbackLabel: string;
+  dateRangeLabel?: string; // e.g. "60d"
+  bulkIdIndex?: BulkIdIndex;
 }
 
-export const buildHarvestBulkWorkbook = ({ rows, defaultBid, lookbackLabel }: BulkExportInput) => {
-  const SP_HEADERS = [
-    "Record Type",
-    "Operation",
-    "Campaign Name",
-    "Ad Group Name",
-    "Keyword Text",
-    "Product Targeting Expression",
-    "Match Type",
-    "State",
-    "Bid",
-    "Advertised ASIN",
-    "Source Campaign",
-    "Lookback Window",
-    "Notes",
-  ];
-  const aoa: any[][] = [SP_HEADERS];
+interface BuiltRow {
+  product: AmazonProduct;
+  entity: string;
+  operation: "Create";
+  campaignId: string;
+  campaignName: string;
+  adGroupId: string;
+  adGroupName: string;
+  keywordText: string;
+  targetingText: string;
+  matchType: string;
+  bid: string;
+  state: "Enabled";
+  destinationMissing?: boolean;
+}
 
-  rows.forEach((r) => {
-    if (r.dismissed || !r.harvested) return;
+const toRowArray = (r: BuiltRow): any[] => [
+  r.product,
+  r.entity,
+  r.operation,
+  r.campaignId,
+  r.campaignName,
+  r.adGroupId,
+  r.adGroupName,
+  "", // Keyword Id
+  "", // Product Targeting Id
+  "", // Targeting Id
+  r.keywordText,
+  r.targetingText,
+  r.matchType,
+  r.bid,
+  r.state,
+];
+
+export const buildHarvestBulkWorkbook = ({
+  rows,
+  defaultBid,
+  bulkIdIndex,
+}: BulkExportInput): { workbook: XLSX.WorkBook; summary: HarvestExportSummary; warnings: string[] } => {
+  const warnings: string[] = [];
+
+  // 1. Dedup exact-keyword creations by (cleanedTerm + destinationCampaign + adGroupName).
+  //    Keep highest-sales winner.
+  const exactKey = (r: HarvestRow) => `${r.cleanedTerm}||${r.destinationCampaign}||${r.adGroupName}`;
+  const exactWinners = new Map<string, HarvestRow>();
+  let dupsRemoved = 0;
+  for (const r of rows) {
+    if (r.dismissed || !r.harvested) continue;
+    const k = exactKey(r);
+    const cur = exactWinners.get(k);
+    if (!cur) {
+      exactWinners.set(k, r);
+    } else {
+      dupsRemoved++;
+      if (r.sales > cur.sales) exactWinners.set(k, r);
+    }
+  }
+
+  // 2. Negative rows — dedup by (source campaign + ad group + cleanedTerm).
+  const negKey = (r: HarvestRow) => `${r.campaignName}||${r.adGroupName}||${r.cleanedTerm}`;
+  const negWinners = new Map<string, HarvestRow>();
+  for (const r of rows) {
+    if (r.dismissed || !r.harvested) continue;
+    const k = negKey(r);
+    if (!negWinners.has(k)) negWinners.set(k, r);
+  }
+
+  if (dupsRemoved > 0) warnings.push(`Removed ${dupsRemoved} duplicate exact keyword entries`);
+
+  // Build rows
+  const built: BuiltRow[] = [];
+  let destinationsMissing = 0;
+  const campaignsAffected = new Set<string>();
+
+  for (const r of exactWinners.values()) {
     const bid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
+    const destMatch = bulkIdIndex?.findCampaign("SP", r.destinationCampaign);
+    if (bulkIdIndex && !destMatch) destinationsMissing++;
+    campaignsAffected.add(r.destinationCampaign);
 
     if (r.termKind === "KEYWORD") {
-      // Stage exact-match keyword in destination campaign
-      aoa.push([
-        "Keyword",
-        "Create",
-        r.destinationCampaign,
-        r.adGroupName,
-        r.cleanedTerm,
-        "",
-        "exact",
-        "enabled",
-        bid.toFixed(2),
-        r.advertisedASIN,
-        r.campaignName,
-        lookbackLabel,
-        "Harvested from search term report",
-      ]);
-      // Negative exact in source
-      aoa.push([
-        "Negative Keyword",
-        "Create",
-        r.campaignName,
-        r.adGroupName,
-        r.cleanedTerm,
-        "",
-        "negativeExact",
-        "enabled",
-        "",
-        r.advertisedASIN,
-        r.campaignName,
-        lookbackLabel,
-        "Block cannibalization of harvested term",
-      ]);
+      built.push({
+        product: "Sponsored Products",
+        entity: "Keyword",
+        operation: "Create",
+        campaignId: destMatch?.campaignId ?? "",
+        campaignName: r.destinationCampaign,
+        adGroupId: destMatch?.adGroupId ?? "",
+        adGroupName: r.adGroupName,
+        keywordText: r.cleanedTerm,
+        targetingText: "",
+        matchType: "Exact",
+        bid: bid.toFixed(2),
+        state: "Enabled",
+        destinationMissing: bulkIdIndex && !destMatch,
+      });
     } else {
-      // ASIN / Product Targeting (PAT)
       const expr = `asin="${r.cleanedTerm.toUpperCase()}"`;
-      aoa.push([
-        "Product Targeting",
-        "Create",
-        r.destinationCampaign,
-        r.adGroupName,
-        "",
-        expr,
-        "",
-        "enabled",
-        bid.toFixed(2),
-        r.advertisedASIN,
-        r.campaignName,
-        lookbackLabel,
-        "Harvested PAT from search term report",
-      ]);
-      aoa.push([
-        "Negative Product Targeting",
-        "Create",
-        r.campaignName,
-        r.adGroupName,
-        "",
-        expr,
-        "",
-        "enabled",
-        "",
-        r.advertisedASIN,
-        r.campaignName,
-        lookbackLabel,
-        "Block cannibalization of harvested PAT",
-      ]);
+      built.push({
+        product: "Sponsored Products",
+        entity: "Product Targeting",
+        operation: "Create",
+        campaignId: destMatch?.campaignId ?? "",
+        campaignName: r.destinationCampaign,
+        adGroupId: destMatch?.adGroupId ?? "",
+        adGroupName: r.adGroupName,
+        keywordText: "",
+        targetingText: expr,
+        matchType: "",
+        bid: bid.toFixed(2),
+        state: "Enabled",
+        destinationMissing: bulkIdIndex && !destMatch,
+      });
     }
+  }
+
+  let exactRows = built.length;
+
+  for (const r of negWinners.values()) {
+    const srcMatch = bulkIdIndex?.findCampaign("SP", r.campaignName);
+    campaignsAffected.add(r.campaignName);
+
+    if (r.termKind === "KEYWORD") {
+      built.push({
+        product: "Sponsored Products",
+        entity: "Negative keyword",
+        operation: "Create",
+        campaignId: srcMatch?.campaignId ?? "",
+        campaignName: r.campaignName,
+        adGroupId: srcMatch?.adGroupId ?? "",
+        adGroupName: r.adGroupName,
+        keywordText: r.cleanedTerm,
+        targetingText: "",
+        matchType: "Negative Exact",
+        bid: "",
+        state: "Enabled",
+      });
+    } else {
+      const expr = `asin="${r.cleanedTerm.toUpperCase()}"`;
+      built.push({
+        product: "Sponsored Products",
+        entity: "Negative product targeting",
+        operation: "Create",
+        campaignId: srcMatch?.campaignId ?? "",
+        campaignName: r.campaignName,
+        adGroupId: srcMatch?.adGroupId ?? "",
+        adGroupName: r.adGroupName,
+        keywordText: "",
+        targetingText: expr,
+        matchType: "",
+        bid: "",
+        state: "Enabled",
+      });
+    }
+  }
+  const negativeRows = built.length - exactRows;
+
+  if (destinationsMissing > 0) {
+    warnings.push(
+      `${destinationsMissing} destination campaign(s) not found in reference bulk file — verify they exist.`,
+    );
+  }
+
+  // 3. Group by product into tabs (Search Term Harvest is SP-only, but use canonical structure).
+  const groups: Record<AmazonProduct, BuiltRow[]> = {
+    "Sponsored Products": [],
+    "Sponsored Brands": [],
+    "Sponsored Display": [],
+  };
+  built.forEach((b) => groups[b.product].push(b));
+
+  const wb = XLSX.utils.book_new();
+  (Object.keys(groups) as AmazonProduct[]).forEach((prod) => {
+    const list = groups[prod];
+    if (!list.length) return;
+    const aoa: any[][] = [BULK_UPDATE_HEADERS, ...list.map(toRowArray)];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, prod);
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Harvest");
-  return wb;
+  // Ensure at least one sheet
+  if (wb.SheetNames.length === 0) {
+    const ws = XLSX.utils.aoa_to_sheet([BULK_UPDATE_HEADERS]);
+    XLSX.utils.book_append_sheet(wb, ws, "Sponsored Products");
+  }
+
+  return {
+    workbook: wb,
+    summary: {
+      exactRows,
+      negativeRows,
+      duplicateExactsRemoved: dupsRemoved,
+      destinationsMissing,
+      campaignsAffected: campaignsAffected.size,
+    },
+    warnings,
+  };
 };
 
 export const downloadWorkbook = (wb: XLSX.WorkBook, fileName: string) => {

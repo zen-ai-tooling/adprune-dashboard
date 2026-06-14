@@ -627,31 +627,53 @@ export const SearchTermHarvesting: React.FC = () => {
               <tr className="border-b border-[#E5E7EB]">
                 <th className="px-3 py-2.5 text-left">
                   <Checkbox
-                    checked={allFilteredSelected}
-                    onCheckedChange={(v) =>
-                      dispatch({ type: "select-many", ids: filtered.map((r) => r.id), value: !!v })
-                    }
+                    checked={allPagedSelected}
+                    onCheckedChange={(v) => {
+                      dispatch({ type: "select-many", ids: pagedRows.map((r) => r.id), value: !!v });
+                      if (!v) setSelectAllFiltered(false);
+                    }}
                   />
                 </th>
-                {[
-                  "Source",
-                  "ASIN",
-                  "Search Term",
-                  "Clicks",
-                  "Spend",
-                  "Orders",
-                  "Sales",
-                  "ACoS",
-                  "Destination",
-                  "Actions",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#6B7280]"
-                  >
-                    {h}
-                  </th>
-                ))}
+                {(
+                  [
+                    { label: "Source", field: null },
+                    { label: "ASIN", field: null },
+                    { label: "Search Term", field: null },
+                    { label: "Clicks", field: "clicks" as const },
+                    { label: "Spend", field: "spend" as const },
+                    { label: "Orders", field: "orders" as const },
+                    { label: "Sales", field: "sales" as const },
+                    { label: "ACoS", field: "acos" as const },
+                    { label: "Destination", field: null },
+                    { label: "Actions", field: null },
+                  ]
+                ).map((col) => {
+                  const isActive = col.field && sortField === col.field;
+                  const arrow = !col.field ? null : isActive ? (sortDir === "asc" ? "▲" : "▼") : "▾";
+                  return (
+                    <th
+                      key={col.label}
+                      onClick={col.field ? () => toggleSort(col.field!) : undefined}
+                      className={`px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] ${
+                        col.field ? "cursor-pointer select-none group" : ""
+                      }`}
+                      style={{ color: isActive ? "#0071E3" : "#6B7280" }}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {col.field && (
+                          <span
+                            className={`text-[9px] ${
+                              isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+                            }`}
+                          >
+                            {arrow}
+                          </span>
+                        )}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -662,7 +684,7 @@ export const SearchTermHarvesting: React.FC = () => {
                   </td>
                 </tr>
               )}
-              {filtered.map((r, i) => {
+              {pagedRows.map((r, i) => {
                 const isSelected = state.selected.has(r.id);
                 const otherSources = (sourceCountByTerm.get(r.cleanedTerm)?.size ?? 1) - 1;
                 return (

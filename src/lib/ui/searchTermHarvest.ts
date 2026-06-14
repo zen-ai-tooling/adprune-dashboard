@@ -199,6 +199,7 @@ export interface HarvestExportSummary {
 export interface BulkExportInput {
   rows: HarvestRow[];
   defaultBid: number;
+  maxBid?: number;
   dateRangeLabel?: string; // e.g. "60d"
   bulkIdIndex?: BulkIdIndex;
 }
@@ -240,9 +241,11 @@ const toRowArray = (r: BuiltRow): any[] => [
 export const buildHarvestBulkWorkbook = ({
   rows,
   defaultBid,
+  maxBid,
   bulkIdIndex,
 }: BulkExportInput): { workbook: XLSX.WorkBook; summary: HarvestExportSummary; warnings: string[] } => {
   const warnings: string[] = [];
+  const bidCap = Number.isFinite(maxBid) && (maxBid as number) > 0 ? (maxBid as number) : defaultBid * 3;
 
   // 1. Dedup exact-keyword creations by (cleanedTerm + destinationCampaign + adGroupName).
   //    Keep highest-sales winner.
@@ -275,10 +278,13 @@ export const buildHarvestBulkWorkbook = ({
   // Build rows
   const built: BuiltRow[] = [];
   let destinationsMissing = 0;
+  let bidsCapped = 0;
   const campaignsAffected = new Set<string>();
 
   for (const r of exactWinners.values()) {
-    const bid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
+    const rawBid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
+    const bid = Math.min(rawBid, bidCap);
+    if (rawBid > bidCap) bidsCapped++;
     const destMatch = bulkIdIndex?.findCampaign("SP", r.destinationCampaign);
     if (bulkIdIndex && !destMatch) destinationsMissing++;
     campaignsAffected.add(r.destinationCampaign);
@@ -290,7 +296,9 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: destMatch?.campaignId ?? "",
         campaignName: r.destinationCampaign,
-        adGroupId: destMatch?.adGroupId ?? "",
+        // For destination Create rows, leave adGroupId empty — Amazon resolves by name.
+        // destMatch.adGroupId may belong to a different ad group than r.adGroupName.
+        adGroupId: "",
         adGroupName: r.adGroupName,
         keywordText: r.cleanedTerm,
         targetingText: "",
@@ -307,7 +315,7 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: destMatch?.campaignId ?? "",
         campaignName: r.destinationCampaign,
-        adGroupId: destMatch?.adGroupId ?? "",
+        adGroupId: "",
         adGroupName: r.adGroupName,
         keywordText: "",
         targetingText: expr,
@@ -317,6 +325,10 @@ export const buildHarvestBulkWorkbook = ({
         destinationMissing: bulkIdIndex && !destMatch,
       });
     }
+  }
+
+  if (bidsCapped > 0) {
+    warnings.push(`${bidsCapped} bid(s) capped at $${bidCap.toFixed(2)} (3× default bid).`);
   }
 
   let exactRows = built.length;

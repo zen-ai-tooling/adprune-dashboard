@@ -107,14 +107,28 @@ export const SearchTermHarvesting: React.FC = () => {
   const [minOrders, setMinOrders] = useState<number>(2);
   const [maxAcos, setMaxAcos] = useState<number>(35);
   const [defaultBid, setDefaultBid] = useState<number>(0.75);
+  const [maxBid, setMaxBid] = useState<number>(2.25);
   const [query, setQuery] = useState("");
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
+  const [hasExported, setHasExported] = useState(false);
   const [completion, setCompletion] = useState<{
     fileName: string;
     summary: HarvestExportSummary;
     onDownload: () => void;
   } | null>(null);
+
+  // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
+  const userTouchedMaxBidRef = useRef(false);
+  React.useEffect(() => {
+    if (!userTouchedMaxBidRef.current) setMaxBid(Number((defaultBid * 3).toFixed(2)));
+  }, [defaultBid]);
+
+  // Unique SP campaign names for destination autocomplete.
+  const destinationOptions = useMemo(
+    () => (bulkIdIndex ? bulkIdIndex.listCampaignNames("SP") : []),
+    [bulkIdIndex],
+  );
 
   const handleStFile = async (file: File) => {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
@@ -192,6 +206,16 @@ export const SearchTermHarvesting: React.FC = () => {
       return;
     }
     dispatch({ type: "harvest", ids });
+    const emptyAdGroup = ids.filter((id) => {
+      const r = state.rows.find((x) => x.id === id);
+      return r && !r.adGroupName.trim();
+    }).length;
+    if (emptyAdGroup > 0) {
+      toast({
+        title: "Heads up",
+        description: `${emptyAdGroup} row(s) have no Ad Group — negatives will apply campaign-wide in the source. Verify this is intended.`,
+      });
+    }
     toast({
       title: ids.length === 1 ? "Harvest staged" : `${ids.length} harvests staged`,
       description: "Exact target + negative exact queued.",
@@ -207,6 +231,7 @@ export const SearchTermHarvesting: React.FC = () => {
     const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
       rows: harvested,
       defaultBid,
+      maxBid,
       bulkIdIndex: bulkIdIndex ?? undefined,
     });
     const stamp = new Date().toISOString().slice(0, 10);
@@ -216,6 +241,7 @@ export const SearchTermHarvesting: React.FC = () => {
     warnings.forEach((w) =>
       toast({ title: "Heads up", description: w, variant: w.includes("not found") ? "destructive" : undefined }),
     );
+    setHasExported(true);
     setCompletion({ fileName, summary, onDownload: doDownload });
   };
 
@@ -246,6 +272,7 @@ export const SearchTermHarvesting: React.FC = () => {
           dispatch({ type: "reset" });
           setBulkIdIndex(null);
           setBulkFileName("");
+          setHasExported(false);
         }}
       />
     );
@@ -265,11 +292,17 @@ export const SearchTermHarvesting: React.FC = () => {
             { label: "Review & select terms", status: "active" as const },
             { label: "Export bulk file", status: "pending" as const },
           ]
-        : [
-            { label: "Upload reports", status: "complete" as const },
-            { label: "Review & select terms", status: "complete" as const },
-            { label: "Export bulk file", status: "active" as const },
-          ];
+        : hasExported
+          ? [
+              { label: "Upload reports", status: "complete" as const },
+              { label: "Review & select terms", status: "complete" as const },
+              { label: "Export bulk file", status: "complete" as const },
+            ]
+          : [
+              { label: "Upload reports", status: "complete" as const },
+              { label: "Review & select terms", status: "complete" as const },
+              { label: "Export bulk file", status: "active" as const },
+            ];
 
   const TopHeader = (
     <div className="space-y-3 pt-2">
@@ -426,6 +459,25 @@ export const SearchTermHarvesting: React.FC = () => {
             />
           </div>
 
+          <div className="flex flex-col">
+            <label
+              className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5"
+              title="Hard cap on per-keyword bid. Defaults to 3× Default Bid."
+            >
+              Max Bid ($)
+            </label>
+            <Input
+              type="number"
+              step="0.05"
+              value={maxBid}
+              onChange={(e) => {
+                userTouchedMaxBidRef.current = true;
+                setMaxBid(Number(e.target.value) || 0);
+              }}
+              className="w-28 font-mono-nums"
+            />
+          </div>
+
           <div className="flex flex-col flex-1 min-w-[200px]">
             <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
               Search
@@ -511,6 +563,14 @@ export const SearchTermHarvesting: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {destinationOptions.length > 0 && (
+        <datalist id="harvest-destination-campaigns">
+          {destinationOptions.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      )}
 
       {/* Table */}
       <div className="surface-card overflow-hidden border border-[#E5E7EB] rounded-xl">
@@ -622,6 +682,15 @@ export const SearchTermHarvesting: React.FC = () => {
                             +{otherSources} src
                           </span>
                         )}
+                        {r.matchType.toLowerCase() === "exact" && (
+                          <span
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={{ background: "#FFEDD5", color: "#9A3412" }}
+                            title="This term already came from an Exact match keyword. Harvesting may create a duplicate."
+                          >
+                            Already Exact
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.clicks}</td>
@@ -640,6 +709,7 @@ export const SearchTermHarvesting: React.FC = () => {
                         value={r.destinationCampaign}
                         onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
                         className="h-7 text-[12px] font-mono-nums"
+                        list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
                       />
                     </td>
                     <td className="px-3 py-2.5">

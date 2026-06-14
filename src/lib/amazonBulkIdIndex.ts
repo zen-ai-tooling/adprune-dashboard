@@ -25,7 +25,10 @@ export interface BulkIdIndex {
     adGroupName: string,
     targetingText: string,
   ): BulkIdMatch | undefined;
+  listCampaignNames(product: "SP" | "SB" | "SD"): string[];
 }
+
+const DEBUG_BULK_INDEX = false;
 
 /* =========================
  * Helpers
@@ -78,8 +81,13 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
   const campaignIndex = new Map<string, BulkIdMatch>();
   const keywordIndex = new Map<string, BulkIdMatch>();
   const targetingIndex = new Map<string, BulkIdMatch>();
+  const campaignNamesByProduct: Record<"SP" | "SB" | "SD", Set<string>> = {
+    SP: new Set(),
+    SB: new Set(),
+    SD: new Set(),
+  };
 
-  console.log("[B2 BULK] building bulk ID index, sheets:", workbook.SheetNames);
+  if (DEBUG_BULK_INDEX) console.log("[B2 BULK] building bulk ID index, sheets:", workbook.SheetNames);
 
   // DEBUG: collect a few sample keys so we can compare against lookups later
   const sampleKeywordKeys: string[] = [];
@@ -189,6 +197,9 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
       const productTargetingId = productTargetingIdCol !== -1 ? String(row[productTargetingIdCol] ?? "").trim() : "";
       const matchType = matchTypeCol !== -1 ? String(row[matchTypeCol] ?? "").trim() : "";
 
+      // Track campaign names per product
+      campaignNamesByProduct[product].add(campaignName);
+
       // Index campaign
       const campaignKey = `${product}|${normalizeText(campaignName)}`;
       if (!campaignIndex.has(campaignKey) && campaignId) {
@@ -239,10 +250,12 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
     }
   }
 
-  console.log("[B2 BULK] keywordIndex size:", keywordIndex.size);
-  console.log("[B2 BULK] sampleKeywordKeys:", sampleKeywordKeys);
-  console.log("[B2 BULK] targetingIndex size:", targetingIndex.size);
-  console.log("[B2 BULK] sampleTargetingKeys:", sampleTargetingKeys);
+  if (DEBUG_BULK_INDEX) {
+    console.log("[B2 BULK] keywordIndex size:", keywordIndex.size);
+    console.log("[B2 BULK] sampleKeywordKeys:", sampleKeywordKeys);
+    console.log("[B2 BULK] targetingIndex size:", targetingIndex.size);
+    console.log("[B2 BULK] sampleTargetingKeys:", sampleTargetingKeys);
+  }
 
   return {
     findCampaign(product: "SP" | "SB" | "SD", campaignName: string): BulkIdMatch | undefined {
@@ -270,6 +283,10 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
     ): BulkIdMatch | undefined {
       const key = `${product}|${normalizeText(campaignName)}|${normalizeText(adGroupName)}|${normalizeText(targetingText)}`;
       return targetingIndex.get(key);
+    },
+
+    listCampaignNames(product: "SP" | "SB" | "SD"): string[] {
+      return Array.from(campaignNamesByProduct[product]).sort();
     },
   };
 }

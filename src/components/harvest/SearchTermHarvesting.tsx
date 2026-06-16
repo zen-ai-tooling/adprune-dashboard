@@ -809,12 +809,21 @@ export const SearchTermHarvesting: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <Input
-                        value={r.destinationCampaign}
-                        onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
-                        className="h-7 text-[12px] font-mono-nums"
-                        list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
-                      />
+                      {r.harvested ? (
+                        <span
+                          className="block text-[12px] font-mono-nums text-[#374151] truncate"
+                          title={r.destinationCampaign}
+                        >
+                          {r.destinationCampaign}
+                        </span>
+                      ) : (
+                        <Input
+                          value={r.destinationCampaign}
+                          onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
+                          className="h-7 text-[12px] font-mono-nums"
+                          list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1">

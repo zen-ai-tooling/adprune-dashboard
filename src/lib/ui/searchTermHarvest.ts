@@ -334,6 +334,12 @@ export const buildHarvestBulkWorkbook = ({
   let exactRows = built.length;
 
   for (const r of negWinners.values()) {
+    // Don't create negatives for terms that already came from Exact match —
+    // a negative exact would disable the existing positive exact keyword in the same ad group.
+    if (r.matchType.trim().toLowerCase() === "exact") {
+      warnings.push(`Skipped negative for "${r.cleanedTerm}" in ${r.campaignName} — source is already Exact match.`);
+      continue;
+    }
     const srcMatch = bulkIdIndex?.findCampaign("SP", r.campaignName);
     campaignsAffected.add(r.campaignName);
 

@@ -855,6 +855,48 @@ export const SearchTermHarvesting: React.FC = () => {
                   </tr>
                 );
               })}
+              {showDismissed &&
+                dismissedRows.map((r) => (
+                  <tr
+                    key={`dismissed-${r.id}`}
+                    className="border-b border-[#F3F4F6]"
+                    style={{ background: "#FAFAFA", opacity: 0.5 }}
+                  >
+                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-2.5">
+                      <div className="text-[12.5px] font-medium text-[#111827] truncate" title={r.campaignName}>
+                        {r.campaignName}
+                      </div>
+                      <div className="text-[11px] text-[#9CA3AF] truncate" title={r.adGroupName}>
+                        {r.adGroupName}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151] truncate">
+                      {r.advertisedASIN}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12.5px] text-[#111827] truncate" title={r.cleanedTerm}>
+                      {r.cleanedTerm}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.clicks}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{fmtUSD(r.spend)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.orders}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#111827]">{fmtUSD(r.sales)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#6B7280]">
+                      {r.orders > 0 ? fmtPct(r.acos) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12px] text-[#6B7280] truncate" title={r.destinationCampaign}>
+                      {r.destinationCampaign}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => dispatch({ type: "restore", id: r.id })}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11.5px] font-semibold border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press"
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

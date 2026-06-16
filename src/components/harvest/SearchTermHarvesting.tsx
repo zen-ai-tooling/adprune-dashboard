@@ -626,13 +626,24 @@ export const SearchTermHarvesting: React.FC = () => {
               Export Bulk File ({harvestedCount})
             </button>
             <button
-              onClick={() => dispatch({ type: "reset" })}
+              onClick={handleReset}
               className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12.5px] font-medium text-[#6B7280] hover:text-[#111827] btn-press"
             >
               Reset
             </button>
           </div>
         </div>
+        {dismissedRows.length > 0 && (
+          <div className="mt-2 text-[11.5px] text-[#9CA3AF]">
+            {dismissedRows.length} dismissed —{" "}
+            <button
+              onClick={() => setShowDismissed((s) => !s)}
+              className="text-[#0071E3] hover:underline font-medium"
+            >
+              {showDismissed ? "Hide" : "Show"}
+            </button>
+          </div>
+        )}
       </div>
 
       {destinationOptions.length > 0 && (

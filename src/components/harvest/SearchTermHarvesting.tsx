@@ -35,6 +35,7 @@ type Action =
   | { type: "dismiss"; id: string }
   | { type: "harvest"; ids: string[] }
   | { type: "rollback"; ids: string[] }
+  | { type: "restore"; id: string }
   | { type: "set-destination"; id: string; value: string }
   | { type: "reset" };
 
@@ -74,6 +75,11 @@ const reducer = (state: State, action: Action): State => {
       return {
         ...state,
         rows: state.rows.map((r) => (action.ids.includes(r.id) ? { ...r, harvested: false } : r)),
+      };
+    case "restore":
+      return {
+        ...state,
+        rows: state.rows.map((r) => (r.id === action.id ? { ...r, dismissed: false } : r)),
       };
     case "set-destination":
       return {
@@ -122,6 +128,7 @@ export const SearchTermHarvesting: React.FC = () => {
     summary: HarvestExportSummary;
     onDownload: () => void;
   } | null>(null);
+  const [showDismissed, setShowDismissed] = useState(false);
 
   // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
   const userTouchedMaxBidRef = useRef(false);
@@ -129,11 +136,16 @@ export const SearchTermHarvesting: React.FC = () => {
     if (!userTouchedMaxBidRef.current) setMaxBid(Number((defaultBid * 3).toFixed(2)));
   }, [defaultBid]);
 
-  // Unique SP campaign names for destination autocomplete.
-  const destinationOptions = useMemo(
-    () => (bulkIdIndex ? bulkIdIndex.listCampaignNames("SP") : []),
-    [bulkIdIndex],
-  );
+  // Unique SP campaign names for destination autocomplete — Exact campaigns first.
+  const destinationOptions = useMemo(() => {
+    if (!bulkIdIndex) return [];
+    const all = bulkIdIndex.listCampaignNames("SP");
+    return [...all].sort((a, b) => {
+      const aExact = /exact/i.test(a) ? 0 : 1;
+      const bExact = /exact/i.test(b) ? 0 : 1;
+      return aExact - bExact || a.localeCompare(b);
+    });
+  }, [bulkIdIndex]);
 
   const handleStFile = async (file: File) => {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
@@ -201,11 +213,17 @@ export const SearchTermHarvesting: React.FC = () => {
     });
   }, [state.rows, minOrders, maxAcos, query, sortField, sortDir]);
 
-  // Pagination — reset to page 0 whenever filters change.
+  // Pagination — reset to page 0 whenever filters change. Also clear selection so that
+  // rows that scroll out of the filtered view cannot be bulk-harvested invisibly.
   React.useEffect(() => {
     setPage(0);
     setSelectAllFiltered(false);
+    dispatch({ type: "select-many", ids: [...state.selected], value: false });
+    // Intentionally omit state.selected from deps — including it would cause an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minOrders, maxAcos, query, sortField, sortDir, state.rows.length]);
+
+  const dismissedRows = useMemo(() => state.rows.filter((r) => r.dismissed), [state.rows]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -243,15 +261,13 @@ export const SearchTermHarvesting: React.FC = () => {
       const r = state.rows.find((x) => x.id === id);
       return r && !r.adGroupName.trim();
     }).length;
+    let desc = "Exact target + negative exact queued.";
     if (emptyAdGroup > 0) {
-      toast({
-        title: "Heads up",
-        description: `${emptyAdGroup} row(s) have no Ad Group — negatives will apply campaign-wide in the source. Verify this is intended.`,
-      });
+      desc += ` (${emptyAdGroup} row(s) have no Ad Group — negatives will be campaign-wide)`;
     }
     toast({
       title: ids.length === 1 ? "Harvest staged" : `${ids.length} harvests staged`,
-      description: "Exact target + negative exact queued.",
+      description: desc,
     });
   };
 
@@ -259,6 +275,15 @@ export const SearchTermHarvesting: React.FC = () => {
     const harvested = state.rows.filter((r) => r.harvested && !r.dismissed);
     if (!harvested.length) {
       toast({ title: "Nothing to export", description: "Harvest some terms first", variant: "destructive" });
+      return;
+    }
+    const emptyDest = harvested.filter((r) => !r.destinationCampaign.trim());
+    if (emptyDest.length) {
+      toast({
+        title: "Missing destinations",
+        description: `${emptyDest.length} harvested term(s) have no destination campaign. Fill them in before exporting.`,
+        variant: "destructive",
+      });
       return;
     }
     const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
@@ -281,6 +306,18 @@ export const SearchTermHarvesting: React.FC = () => {
   const harvestedCount = state.rows.filter((r) => r.harvested && !r.dismissed).length;
   const allPagedSelected = pagedRows.length > 0 && pagedRows.every((r) => state.selected.has(r.id));
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => state.selected.has(r.id));
+
+  const handleReset = () => {
+    if (harvestedCount > 0 || state.rows.length > 0) {
+      const confirmed = window.confirm(
+        `Reset will clear ${state.rows.length} loaded terms and ${harvestedCount} staged harvests. Continue?`,
+      );
+      if (!confirmed) return;
+    }
+    dispatch({ type: "reset" });
+    setShowDismissed(false);
+    setHasExported(false);
+  };
 
   // Completion view
   if (completion) {
@@ -589,13 +626,24 @@ export const SearchTermHarvesting: React.FC = () => {
               Export Bulk File ({harvestedCount})
             </button>
             <button
-              onClick={() => dispatch({ type: "reset" })}
+              onClick={handleReset}
               className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12.5px] font-medium text-[#6B7280] hover:text-[#111827] btn-press"
             >
               Reset
             </button>
           </div>
         </div>
+        {dismissedRows.length > 0 && (
+          <div className="mt-2 text-[11.5px] text-[#9CA3AF]">
+            {dismissedRows.length} dismissed —{" "}
+            <button
+              onClick={() => setShowDismissed((s) => !s)}
+              className="text-[#0071E3] hover:underline font-medium"
+            >
+              {showDismissed ? "Hide" : "Show"}
+            </button>
+          </div>
+        )}
       </div>
 
       {destinationOptions.length > 0 && (
@@ -742,7 +790,7 @@ export const SearchTermHarvesting: React.FC = () => {
                           <span
                             className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
                             style={{ background: "#FFEDD5", color: "#9A3412" }}
-                            title="This term already came from an Exact match keyword. Harvesting may create a duplicate."
+                            title="Only the exact keyword will be created — no negative needed since the source is already exact match."
                           >
                             Already Exact
                           </span>
@@ -761,12 +809,21 @@ export const SearchTermHarvesting: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <Input
-                        value={r.destinationCampaign}
-                        onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
-                        className="h-7 text-[12px] font-mono-nums"
-                        list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
-                      />
+                      {r.harvested ? (
+                        <span
+                          className="block text-[12px] font-mono-nums text-[#374151] truncate"
+                          title={r.destinationCampaign}
+                        >
+                          {r.destinationCampaign}
+                        </span>
+                      ) : (
+                        <Input
+                          value={r.destinationCampaign}
+                          onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
+                          className="h-7 text-[12px] font-mono-nums"
+                          list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
+                        />
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1">
@@ -798,6 +855,48 @@ export const SearchTermHarvesting: React.FC = () => {
                   </tr>
                 );
               })}
+              {showDismissed &&
+                dismissedRows.map((r) => (
+                  <tr
+                    key={`dismissed-${r.id}`}
+                    className="border-b border-[#F3F4F6]"
+                    style={{ background: "#FAFAFA", opacity: 0.5 }}
+                  >
+                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-2.5">
+                      <div className="text-[12.5px] font-medium text-[#111827] truncate" title={r.campaignName}>
+                        {r.campaignName}
+                      </div>
+                      <div className="text-[11px] text-[#9CA3AF] truncate" title={r.adGroupName}>
+                        {r.adGroupName}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151] truncate">
+                      {r.advertisedASIN}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12.5px] text-[#111827] truncate" title={r.cleanedTerm}>
+                      {r.cleanedTerm}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.clicks}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{fmtUSD(r.spend)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.orders}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#111827]">{fmtUSD(r.sales)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#6B7280]">
+                      {r.orders > 0 ? fmtPct(r.acos) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12px] text-[#6B7280] truncate" title={r.destinationCampaign}>
+                      {r.destinationCampaign}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => dispatch({ type: "restore", id: r.id })}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11.5px] font-semibold border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press"
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

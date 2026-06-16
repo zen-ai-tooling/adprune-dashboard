@@ -128,6 +128,7 @@ export const SearchTermHarvesting: React.FC = () => {
     summary: HarvestExportSummary;
     onDownload: () => void;
   } | null>(null);
+  const [showDismissed, setShowDismissed] = useState(false);
 
   // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
   const userTouchedMaxBidRef = useRef(false);
@@ -135,11 +136,16 @@ export const SearchTermHarvesting: React.FC = () => {
     if (!userTouchedMaxBidRef.current) setMaxBid(Number((defaultBid * 3).toFixed(2)));
   }, [defaultBid]);
 
-  // Unique SP campaign names for destination autocomplete.
-  const destinationOptions = useMemo(
-    () => (bulkIdIndex ? bulkIdIndex.listCampaignNames("SP") : []),
-    [bulkIdIndex],
-  );
+  // Unique SP campaign names for destination autocomplete — Exact campaigns first.
+  const destinationOptions = useMemo(() => {
+    if (!bulkIdIndex) return [];
+    const all = bulkIdIndex.listCampaignNames("SP");
+    return [...all].sort((a, b) => {
+      const aExact = /exact/i.test(a) ? 0 : 1;
+      const bExact = /exact/i.test(b) ? 0 : 1;
+      return aExact - bExact || a.localeCompare(b);
+    });
+  }, [bulkIdIndex]);
 
   const handleStFile = async (file: File) => {
     if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {

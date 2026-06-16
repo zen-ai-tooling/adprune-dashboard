@@ -76,6 +76,11 @@ const reducer = (state: State, action: Action): State => {
         ...state,
         rows: state.rows.map((r) => (action.ids.includes(r.id) ? { ...r, harvested: false } : r)),
       };
+    case "restore":
+      return {
+        ...state,
+        rows: state.rows.map((r) => (r.id === action.id ? { ...r, dismissed: false } : r)),
+      };
     case "set-destination":
       return {
         ...state,

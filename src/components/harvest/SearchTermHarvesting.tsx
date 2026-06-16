@@ -790,7 +790,7 @@ export const SearchTermHarvesting: React.FC = () => {
                           <span
                             className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
                             style={{ background: "#FFEDD5", color: "#9A3412" }}
-                            title="This term already came from an Exact match keyword. Harvesting may create a duplicate."
+                            title="Only the exact keyword will be created — no negative needed since the source is already exact match."
                           >
                             Already Exact
                           </span>

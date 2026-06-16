@@ -213,11 +213,17 @@ export const SearchTermHarvesting: React.FC = () => {
     });
   }, [state.rows, minOrders, maxAcos, query, sortField, sortDir]);
 
-  // Pagination — reset to page 0 whenever filters change.
+  // Pagination — reset to page 0 whenever filters change. Also clear selection so that
+  // rows that scroll out of the filtered view cannot be bulk-harvested invisibly.
   React.useEffect(() => {
     setPage(0);
     setSelectAllFiltered(false);
+    dispatch({ type: "select-many", ids: [...state.selected], value: false });
+    // Intentionally omit state.selected from deps — including it would cause an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minOrders, maxAcos, query, sortField, sortDir, state.rows.length]);
+
+  const dismissedRows = useMemo(() => state.rows.filter((r) => r.dismissed), [state.rows]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);

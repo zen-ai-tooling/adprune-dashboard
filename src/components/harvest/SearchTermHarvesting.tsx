@@ -35,6 +35,7 @@ type Action =
   | { type: "dismiss"; id: string }
   | { type: "harvest"; ids: string[] }
   | { type: "rollback"; ids: string[] }
+  | { type: "restore"; id: string }
   | { type: "set-destination"; id: string; value: string }
   | { type: "reset" };
 

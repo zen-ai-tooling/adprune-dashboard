@@ -261,15 +261,13 @@ export const SearchTermHarvesting: React.FC = () => {
       const r = state.rows.find((x) => x.id === id);
       return r && !r.adGroupName.trim();
     }).length;
+    let desc = "Exact target + negative exact queued.";
     if (emptyAdGroup > 0) {
-      toast({
-        title: "Heads up",
-        description: `${emptyAdGroup} row(s) have no Ad Group — negatives will apply campaign-wide in the source. Verify this is intended.`,
-      });
+      desc += ` (${emptyAdGroup} row(s) have no Ad Group — negatives will be campaign-wide)`;
     }
     toast({
       title: ids.length === 1 ? "Harvest staged" : `${ids.length} harvests staged`,
-      description: "Exact target + negative exact queued.",
+      description: desc,
     });
   };
 
@@ -277,6 +275,15 @@ export const SearchTermHarvesting: React.FC = () => {
     const harvested = state.rows.filter((r) => r.harvested && !r.dismissed);
     if (!harvested.length) {
       toast({ title: "Nothing to export", description: "Harvest some terms first", variant: "destructive" });
+      return;
+    }
+    const emptyDest = harvested.filter((r) => !r.destinationCampaign.trim());
+    if (emptyDest.length) {
+      toast({
+        title: "Missing destinations",
+        description: `${emptyDest.length} harvested term(s) have no destination campaign. Fill them in before exporting.`,
+        variant: "destructive",
+      });
       return;
     }
     const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
@@ -299,6 +306,18 @@ export const SearchTermHarvesting: React.FC = () => {
   const harvestedCount = state.rows.filter((r) => r.harvested && !r.dismissed).length;
   const allPagedSelected = pagedRows.length > 0 && pagedRows.every((r) => state.selected.has(r.id));
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => state.selected.has(r.id));
+
+  const handleReset = () => {
+    if (harvestedCount > 0 || state.rows.length > 0) {
+      const confirmed = window.confirm(
+        `Reset will clear ${state.rows.length} loaded terms and ${harvestedCount} staged harvests. Continue?`,
+      );
+      if (!confirmed) return;
+    }
+    dispatch({ type: "reset" });
+    setShowDismissed(false);
+    setHasExported(false);
+  };
 
   // Completion view
   if (completion) {

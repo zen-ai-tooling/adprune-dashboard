@@ -17,6 +17,7 @@ interface BleederInput {
   matchType?: string;
   entity?: string;
   trackType: string;
+  thresholdAcos?: number; // The computed ACoS threshold for this track (e.g., 50 for SB/SD, 60 for SP)
 }
 
 export function suggestDecision(bleeder: BleederInput): Suggestion {

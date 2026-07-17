@@ -402,7 +402,7 @@ export const processDecisions = async (file: File): Promise<ProcessingResult> =>
 
         if (isTargetingColumn && isCurrentlyKeyword) {
           headers[idx] = "product targeting expression";
-          console.log("[DECISION] SD Targeting mapped to product targeting expression on sheet:", sheetName);
+          if (DEBUG_DECISION) console.log("[DECISION] SD Targeting mapped to product targeting expression on sheet:", sheetName);
         }
       });
     }

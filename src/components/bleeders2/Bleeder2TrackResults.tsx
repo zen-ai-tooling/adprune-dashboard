@@ -73,6 +73,10 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
   const hasBleeders = result.bleeders.length > 0;
 
   const suggestions = useMemo(() => result.bleeders.map(bleeder => {
+    const passThreshold =
+      result.trackType === 'SBSD' ||
+      result.trackType === 'SP' ||
+      result.trackType === 'SP_KEYWORDS';
     const raw = suggestDecision({
       acos: bleeder.acos,
       spend: bleeder.spend,
@@ -81,6 +85,7 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
       matchType: bleeder.matchType,
       entity: bleeder.entity,
       trackType: result.trackType,
+      thresholdAcos: passThreshold ? result.acosThreshold : undefined,
     });
     // SP Search Terms: cut_bid/review → Negative
     if (result.trackType === 'SP' &&

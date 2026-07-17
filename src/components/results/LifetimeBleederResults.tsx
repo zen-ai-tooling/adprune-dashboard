@@ -281,6 +281,8 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
       const fileName = `Amazon_Bulk_Operations_Lifetime_${today}.xlsx`;
 
       setAmazonFile({ workbook: wb, fileName });
+      clearSession(sessionModule, sessionFileRef.current);
+      setSavedSession(null);
       toast.success("Amazon file ready", {
         description: `${decisionsMade} decisions exported`,
         duration: 3000,

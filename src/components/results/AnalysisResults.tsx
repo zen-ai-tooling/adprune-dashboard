@@ -467,6 +467,8 @@ export const AnalysisResults = ({
         URL.revokeObjectURL(url);
         setGeneratedFileName(amazonFileName);
         setGenerateDone(true);
+        clearSession(sessionModule, sessionFileRef.current);
+        setSavedSession(null);
         lastDownloadRef.current = () => {
           const blob2 = new Blob([outBuffer], {
             type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

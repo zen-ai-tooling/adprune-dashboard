@@ -32,6 +32,8 @@ import { OnboardingBanner } from "@/components/shared/OnboardingBanner";
 import { SessionLogView } from "@/components/history/SessionLogView";
 import { AnalyzingView } from "@/components/shared/AnalyzingView";
 import { SearchTermHarvesting } from "@/components/harvest/SearchTermHarvesting";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { checkFileSize } from "@/lib/fileSizeGuard";
 import * as XLSX from "xlsx";
 
 interface Message {

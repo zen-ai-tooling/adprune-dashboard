@@ -130,6 +130,7 @@ export const SearchTermHarvesting: React.FC = () => {
     onDownload: () => void;
   } | null>(null);
   const [showDismissed, setShowDismissed] = useState(false);
+  const [dismissedShown, setDismissedShown] = useState(20);
 
   // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
   const userTouchedMaxBidRef = useRef(false);
@@ -456,6 +457,12 @@ export const SearchTermHarvesting: React.FC = () => {
             className="mt-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-6 cursor-pointer btn-press"
             style={{ borderColor: "#E5E7EB", background: "#FAFBFC" }}
             onClick={() => bulkInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const f = e.dataTransfer.files?.[0];
+              if (f) handleBulkFile(f);
+            }}
           >
             <FileText className="w-6 h-6 text-[#9CA3AF]" strokeWidth={1.6} />
             <p className="text-[13px] font-medium text-[#374151] mt-2">
@@ -858,51 +865,10 @@ export const SearchTermHarvesting: React.FC = () => {
                   </tr>
                 );
               })}
-              {showDismissed &&
-                dismissedRows.map((r) => (
-                  <tr
-                    key={`dismissed-${r.id}`}
-                    className="border-b border-[#F3F4F6]"
-                    style={{ background: "#FAFAFA", opacity: 0.5 }}
-                  >
-                    <td className="px-3 py-2.5" />
-                    <td className="px-3 py-2.5">
-                      <div className="text-[12.5px] font-medium text-[#111827] truncate" title={r.campaignName}>
-                        {r.campaignName}
-                      </div>
-                      <div className="text-[11px] text-[#9CA3AF] truncate" title={r.adGroupName}>
-                        {r.adGroupName}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151] truncate">
-                      {r.advertisedASIN}
-                    </td>
-                    <td className="px-3 py-2.5 text-[12.5px] text-[#111827] truncate" title={r.cleanedTerm}>
-                      {r.cleanedTerm}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.clicks}</td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{fmtUSD(r.spend)}</td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.orders}</td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#111827]">{fmtUSD(r.sales)}</td>
-                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#6B7280]">
-                      {r.orders > 0 ? fmtPct(r.acos) : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-[12px] text-[#6B7280] truncate" title={r.destinationCampaign}>
-                      {r.destinationCampaign}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => dispatch({ type: "restore", id: r.id })}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11.5px] font-semibold border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press"
-                      >
-                        Restore
-                      </button>
-                    </td>
-                  </tr>
-                ))}
             </tbody>
           </table>
         </div>
+
         {allPagedSelected && filtered.length > pagedRows.length && (
           <div className="px-4 py-2 text-[12.5px] text-[#374151] bg-[#EFF6FF] border-t border-[#BFDBFE] flex items-center justify-center gap-2">
             {selectAllFiltered ? (
@@ -968,6 +934,88 @@ export const SearchTermHarvesting: React.FC = () => {
           </div>
         )}
       </div>
+
+      {showDismissed && dismissedRows.length > 0 && (
+        <div className="surface-card overflow-hidden border border-[#E5E7EB] rounded-xl">
+          <div className="px-4 py-2.5 border-b border-[#E5E7EB] bg-[#FAFBFC] text-[12px] font-semibold uppercase tracking-[0.06em] text-[#6B7280]">
+            Dismissed ({dismissedRows.length})
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "36px" }} />
+                <col style={{ width: "180px" }} />
+                <col style={{ width: "110px" }} />
+                <col style={{ width: "280px" }} />
+                <col style={{ width: "70px" }} />
+                <col style={{ width: "80px" }} />
+                <col style={{ width: "70px" }} />
+                <col style={{ width: "80px" }} />
+                <col style={{ width: "70px" }} />
+                <col style={{ width: "200px" }} />
+                <col style={{ width: "150px" }} />
+              </colgroup>
+              <tbody>
+                {dismissedRows.slice(0, dismissedShown).map((r) => (
+                  <tr
+                    key={`dismissed-${r.id}`}
+                    className="border-b border-[#F3F4F6]"
+                    style={{ background: "#FAFAFA", opacity: 0.6 }}
+                  >
+                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-2.5">
+                      <div className="text-[12.5px] font-medium text-[#111827] truncate" title={r.campaignName}>
+                        {r.campaignName}
+                      </div>
+                      <div className="text-[11px] text-[#9CA3AF] truncate" title={r.adGroupName}>
+                        {r.adGroupName}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151] truncate">
+                      {r.advertisedASIN}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12.5px] text-[#111827] truncate" title={r.cleanedTerm}>
+                      {r.cleanedTerm}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.clicks}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{fmtUSD(r.spend)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#374151]">{r.orders}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#111827]">{fmtUSD(r.sales)}</td>
+                    <td className="px-3 py-2.5 font-mono-nums text-[12px] text-[#6B7280]">
+                      {r.orders > 0 ? fmtPct(r.acos) : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-[12px] text-[#6B7280] truncate" title={r.destinationCampaign}>
+                      {r.destinationCampaign}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => dispatch({ type: "restore", id: r.id })}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11.5px] font-semibold border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press"
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {dismissedRows.length > dismissedShown && (
+            <div className="px-4 py-2.5 border-t border-[#E5E7EB] bg-[#FAFBFC] flex items-center justify-center gap-2 text-[12.5px] text-[#6B7280]">
+              <span>
+                Showing <strong className="text-[#111827] font-mono-nums">{dismissedShown}</strong> of{" "}
+                <strong className="text-[#111827] font-mono-nums">{dismissedRows.length}</strong> dismissed
+              </span>
+              <button
+                onClick={() => setDismissedShown((n) => n + 20)}
+                className="h-7 px-2.5 rounded-md border border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] btn-press text-[12px] font-medium"
+              >
+                Show more
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

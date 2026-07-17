@@ -96,7 +96,9 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
 
   // ---------- Session auto-save (data-loss guard) ----------
   const sessionModule = "lifetime_audit";
-  const sessionFileRef = useRef<string>(result.fileName);
+  const sessionFileRef = useRef<string>(
+    `lifetime_${bleeders.length}_${bleeders[0]?.campaignName ?? "empty"}`,
+  );
   const [savedSession, setSavedSession] = useState(() =>
     loadSavedSession(sessionModule, sessionFileRef.current),
   );

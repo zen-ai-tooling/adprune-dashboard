@@ -27,26 +27,39 @@ export function suggestB1Row(row: B1SuggestionInput): B1Suggestion {
   const acosNum = row.acos != null ? row.acos : sales > 0 ? (spend / sales) * 100 : 0;
 
   if (hasConversions) {
-    if (acosNum >= 100 && spend >= 20) {
+    // Even with some conversions, this target was flagged as a bleeder.
+    // The ACoS is likely very high or the conversions are marginal.
+    if (acosNum >= 200) {
       return {
         kind: "pause",
         label: "Pause",
         bg: "rgba(239, 68, 68, 0.08)",
         color: "#B91C1C",
         border: "rgba(239, 68, 68, 0.22)",
-        rationale: `${acosNum.toFixed(0)}% ACoS on $${spend.toFixed(2)} spend — losing money`,
+        rationale: `${orders} order(s) but ${acosNum.toFixed(0)}% ACoS on $${spend.toFixed(2)} — losing money despite conversions`,
         defaultDecision: "Pause",
       };
     }
-    if (acosNum >= 80 && spend >= 15) {
+    if (acosNum >= 100) {
       return {
         kind: "cut_bid",
         label: "Cut Bid",
         bg: "rgba(245, 158, 11, 0.08)",
         color: "#B45309",
         border: "rgba(245, 158, 11, 0.22)",
-        rationale: `${acosNum.toFixed(0)}% ACoS — reduce bid to improve efficiency`,
+        rationale: `${orders} order(s) at ${acosNum.toFixed(0)}% ACoS — unprofitable, cut bid`,
         defaultDecision: "Cut Bid 50%",
+      };
+    }
+    if (acosNum >= 50 && spend >= 15) {
+      return {
+        kind: "monitor",
+        label: "Review",
+        bg: "rgba(107, 114, 128, 0.07)",
+        color: "#374151",
+        border: "rgba(107, 114, 128, 0.20)",
+        rationale: `${orders} order(s) at ${acosNum.toFixed(0)}% ACoS — converting but may need bid adjustment`,
+        defaultDecision: "Keep",
       };
     }
     return {
@@ -55,7 +68,7 @@ export function suggestB1Row(row: B1SuggestionInput): B1Suggestion {
       bg: "rgba(5, 150, 105, 0.08)",
       color: "#047857",
       border: "rgba(5, 150, 105, 0.20)",
-      rationale: "Has conversions — keep and monitor performance",
+      rationale: `${orders} order(s) at reasonable ACoS — keep and monitor`,
       defaultDecision: "Keep",
     };
   }

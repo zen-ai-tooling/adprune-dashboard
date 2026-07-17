@@ -26,6 +26,7 @@ import {
   type HarvestExportSummary,
 } from "@/lib/ui/searchTermHarvest";
 import type { BulkIdIndex } from "@/lib/amazonBulkIdIndex";
+import { checkFileSize } from "@/lib/fileSizeGuard";
 
 // ── Local-only reducer (no global state touched) ──
 type Action =
@@ -152,6 +153,7 @@ export const SearchTermHarvesting: React.FC = () => {
       toast({ title: "Invalid file type", description: "Use .xlsx, .xls, or .csv", variant: "destructive" });
       return;
     }
+    if (!checkFileSize(file, toast)) return;
     setIsParsing(true);
     setParseStep(0);
     const tick = setInterval(() => setParseStep((p) => Math.min(p + 1, PARSE_MESSAGES.length - 1)), 350);
@@ -175,6 +177,7 @@ export const SearchTermHarvesting: React.FC = () => {
       toast({ title: "Invalid file type", description: "Reference bulk must be .xlsx", variant: "destructive" });
       return;
     }
+    if (!checkFileSize(file, toast)) return;
     try {
       const idx = await parseReferenceBulkFile(file);
       setBulkIdIndex(idx);

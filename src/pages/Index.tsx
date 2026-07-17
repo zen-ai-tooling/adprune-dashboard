@@ -32,6 +32,8 @@ import { OnboardingBanner } from "@/components/shared/OnboardingBanner";
 import { SessionLogView } from "@/components/history/SessionLogView";
 import { AnalyzingView } from "@/components/shared/AnalyzingView";
 import { SearchTermHarvesting } from "@/components/harvest/SearchTermHarvesting";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { checkFileSize } from "@/lib/fileSizeGuard";
 import * as XLSX from "xlsx";
 
 interface Message {
@@ -317,6 +319,8 @@ const Index = () => {
       toast({ title: "Invalid file type", description: "Use .xlsx, .xls, .csv, or .zip", variant: "destructive" });
       return;
     }
+    if (!checkFileSize(file, toast)) return;
+
 
     setBleeder2TrackState((prev) => ({
       ...prev,
@@ -414,6 +418,7 @@ const Index = () => {
   };
 
   const handleBleeder2DecisionUpload = async (file: File, track: Bleeder2Track, cutBidPct?: number) => {
+    if (!checkFileSize(file, toast)) return;
     try {
       const { processTrackDecisionFile } = await import("@/lib/bleeder2TrackDecisionProcessor");
       const result = await processTrackDecisionFile(file, track, cutBidPct ?? 25);
@@ -477,6 +482,8 @@ const Index = () => {
 
   // Lifetime handlers
   const handleLifetimeAnalysis = async (lifetimeReport: File, bulkFile: File) => {
+    if (!checkFileSize(lifetimeReport, toast)) return;
+    if (!checkFileSize(bulkFile, toast)) return;
     try {
       setLifetimeProcessing(true);
       const { analyzeLifetimeBleeders } = await import("@/lib/lifetimeBleederAnalysis");
@@ -546,6 +553,7 @@ const Index = () => {
   };
 
   const processFileUpload = async (files: File[], forceAnalysis: boolean = false) => {
+    if (!checkFileSize(files[0], toast)) return;
     const now = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
     const fileHash = await generateFileHash(files[0]);
 
@@ -962,21 +970,23 @@ const Index = () => {
             )}
 
             {activeModule === "bleeders_1" && processorType === "report-creator" && analysisResults && (
-              <AnalysisResults
-                summary={analysisResults.summary}
-                tables={analysisResults.tables}
-                csvData={analysisResults.csvData}
-                validation={analysisResults.validation}
-                topSpenders={analysisResults.topSpenders}
-                allRows={analysisResults.allRows}
-                formattedWorkbook={analysisResults.formattedWorkbook}
-                mode={analysisResults.mode || bleederMode}
-                onProceedToProcessor={() => {
-                  setShowProcessorUpload(true);
-                  setShowUpload(false);
-                  setCurrentStep(2);
-                }}
-              />
+              <ErrorBoundary moduleName="Bleeders 1.0">
+                <AnalysisResults
+                  summary={analysisResults.summary}
+                  tables={analysisResults.tables}
+                  csvData={analysisResults.csvData}
+                  validation={analysisResults.validation}
+                  topSpenders={analysisResults.topSpenders}
+                  allRows={analysisResults.allRows}
+                  formattedWorkbook={analysisResults.formattedWorkbook}
+                  mode={analysisResults.mode || bleederMode}
+                  onProceedToProcessor={() => {
+                    setShowProcessorUpload(true);
+                    setShowUpload(false);
+                    setCurrentStep(2);
+                  }}
+                />
+              </ErrorBoundary>
             )}
 
             {showProcessorUpload && !decisionResults && activeModule === "bleeders_1" && (
@@ -1223,21 +1233,23 @@ const Index = () => {
               activeModule === "bleeders_2" &&
               bleeder2ActiveTrack &&
               bleeder2TrackState[bleeder2ActiveTrack].result && (
-                <Bleeder2TrackResults
-                  result={bleeder2TrackState[bleeder2ActiveTrack].result!}
-                  onDownload={() => handleDownloadDecisionSheet(bleeder2ActiveTrack!)}
-                  onUploadDecision={(_, file, pct) => handleBleeder2DecisionUpload(file, bleeder2ActiveTrack!, pct)}
-                  onAdjustThresholds={() => setBleeder2Stage("thresholds")}
-                  onUploadNewFile={(track) => handleResetTrack(track)}
-                  decisionFile={bleeder2TrackState[bleeder2ActiveTrack].decisionFile}
-                  amazonFile={bleeder2TrackState[bleeder2ActiveTrack].amazonFile}
-                  onDownloadAmazon={() => handleDownloadAmazonFile(bleeder2ActiveTrack!)}
-                  onStartNew={() => {
-                    setBleeder2ActiveTrack(null);
-                    setBleeder2Stage("picker");
-                  }}
-                  acosThresholdLabel={`${bleeder2Thresholds.targetACOS + 10}% (SB/SD) / ${bleeder2Thresholds.targetACOS + 20}% (SP)`}
-                />
+                <ErrorBoundary moduleName="Bleeders 2.0">
+                  <Bleeder2TrackResults
+                    result={bleeder2TrackState[bleeder2ActiveTrack].result!}
+                    onDownload={() => handleDownloadDecisionSheet(bleeder2ActiveTrack!)}
+                    onUploadDecision={(_, file, pct) => handleBleeder2DecisionUpload(file, bleeder2ActiveTrack!, pct)}
+                    onAdjustThresholds={() => setBleeder2Stage("thresholds")}
+                    onUploadNewFile={(track) => handleResetTrack(track)}
+                    decisionFile={bleeder2TrackState[bleeder2ActiveTrack].decisionFile}
+                    amazonFile={bleeder2TrackState[bleeder2ActiveTrack].amazonFile}
+                    onDownloadAmazon={() => handleDownloadAmazonFile(bleeder2ActiveTrack!)}
+                    onStartNew={() => {
+                      setBleeder2ActiveTrack(null);
+                      setBleeder2Stage("picker");
+                    }}
+                    acosThresholdLabel={`${bleeder2Thresholds.targetACOS + 10}% (SB/SD) / ${bleeder2Thresholds.targetACOS + 20}% (SP)`}
+                  />
+                </ErrorBoundary>
               )}
 
             {/* LIFETIME BLEEDERS */}
@@ -1250,18 +1262,24 @@ const Index = () => {
 
             {activeModule === "lifetime_bleeders" && lifetimeStage === "results" && lifetimeResult && (
               <div className="pt-4">
-                <LifetimeBleederResults
-                  result={lifetimeResult}
-                  onStartNew={() => {
-                    setLifetimeResult(null);
-                    setLifetimeStage("upload");
-                  }}
-                />
+                <ErrorBoundary moduleName="Lifetime Audit">
+                  <LifetimeBleederResults
+                    result={lifetimeResult}
+                    onStartNew={() => {
+                      setLifetimeResult(null);
+                      setLifetimeStage("upload");
+                    }}
+                  />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* SEARCH TERM HARVESTING */}
-            {activeModule === "search_harvest" && <SearchTermHarvesting />}
+            {activeModule === "search_harvest" && (
+              <ErrorBoundary moduleName="Search Term Harvesting">
+                <SearchTermHarvesting />
+              </ErrorBoundary>
+            )}
 
             <div ref={messagesEndRef} />
 

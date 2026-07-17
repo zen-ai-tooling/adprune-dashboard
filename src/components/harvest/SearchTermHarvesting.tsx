@@ -130,6 +130,7 @@ export const SearchTermHarvesting: React.FC = () => {
     onDownload: () => void;
   } | null>(null);
   const [showDismissed, setShowDismissed] = useState(false);
+  const [dismissedShown, setDismissedShown] = useState(20);
 
   // Keep maxBid in sync with defaultBid * 3 unless user has manually adjusted.
   const userTouchedMaxBidRef = useRef(false);
@@ -456,6 +457,12 @@ export const SearchTermHarvesting: React.FC = () => {
             className="mt-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-6 cursor-pointer btn-press"
             style={{ borderColor: "#E5E7EB", background: "#FAFBFC" }}
             onClick={() => bulkInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const f = e.dataTransfer.files?.[0];
+              if (f) handleBulkFile(f);
+            }}
           >
             <FileText className="w-6 h-6 text-[#9CA3AF]" strokeWidth={1.6} />
             <p className="text-[13px] font-medium text-[#374151] mt-2">

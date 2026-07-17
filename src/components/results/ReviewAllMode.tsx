@@ -92,7 +92,6 @@ export const ReviewAllMode = ({
   setDecisions,
   onGenerate,
   onDownloadLegacy,
-  onUploadDecisionFile,
   isGenerating,
   generateDone,
   decisionsMade,

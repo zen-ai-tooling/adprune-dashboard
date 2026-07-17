@@ -808,7 +808,7 @@ export const AnalysisResults = ({
           rowsBySheet={rowsBySheet}
           decisions={decisions}
           setDecision={setDecisionWithFlash}
-          setDecisions={setDecisions}
+          setDecisions={setDecisionsTracked}
           onGenerate={handleGenerateDecisionFile}
           onDownloadLegacy={handleDownload}
           

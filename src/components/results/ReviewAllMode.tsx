@@ -543,20 +543,6 @@ export const ReviewAllMode = ({
                         <RotateCcw className="w-3.5 h-3.5 text-[hsl(var(--text-tertiary))]" />
                         Reset all decisions
                       </button>
-                      <label className="w-full flex items-center gap-2 px-2.5 py-2 text-[12.5px] text-foreground hover:bg-secondary rounded-md text-left cursor-pointer">
-                        <UploadIcon className="w-3.5 h-3.5 text-[hsl(var(--text-tertiary))]" />
-                        Upload decision file manually
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls,.csv"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) onUploadDecisionFile(f);
-                            setMoreOpen(false);
-                          }}
-                        />
-                      </label>
                     </div>
                   )}
                 </div>

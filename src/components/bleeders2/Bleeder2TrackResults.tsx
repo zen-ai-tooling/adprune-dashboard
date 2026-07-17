@@ -401,6 +401,22 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
 
   return (
     <div className="space-y-5">
+      {savedSession && !sessionHydrated && (
+        <ResumeSessionBanner
+          saved={savedSession}
+          onResume={() => {
+            setDecisions(savedSession.decisions as Record<number, string>);
+            setSessionHydrated(true);
+            setSavedSession(null);
+          }}
+          onStartFresh={() => {
+            clearSession(sessionModule, sessionFileRef.current);
+            setSavedSession(null);
+            setSessionHydrated(true);
+          }}
+        />
+      )}
+
       {/* Back to summary */}
       {amazonFile && showFullResults && (
         <button

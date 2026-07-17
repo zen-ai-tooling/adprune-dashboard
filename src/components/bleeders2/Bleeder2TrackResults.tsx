@@ -62,7 +62,21 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
   type FocusFilter = 'all' | 'pause' | 'review' | 'decided' | 'highspend';
   const [focusFilter, setFocusFilter] = useState<FocusFilter>('all');
 
+  // ---------- Session auto-save (data-loss guard) ----------
+  const sessionModule = `bleeders2_${result.trackType}`;
+  const sessionFileRef = useRef<string>(result.fileName);
+  const [savedSession, setSavedSession] = useState(() =>
+    loadSavedSession(sessionModule, sessionFileRef.current),
+  );
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+    saveSession(sessionModule, sessionFileRef.current, decisions, result.bleeders.length);
+  }, [decisions, sessionHydrated, sessionModule, result.bleeders.length]);
+
   const setDecisionWithFlash = (idx: number, val: string) => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions(prev => ({ ...prev, [idx]: val }));
     let cls = '';
     if (val === 'Pause') cls = 'row-flash-pause';

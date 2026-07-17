@@ -206,34 +206,26 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
 
   const isSearchTermSheet = result.trackType === 'SP';
 
-  const handleSetAllPause = () => {
+  const applyBulk = (label: string, value: string) => {
+    const keys = result.bleeders.map((_, idx) => idx);
+    if (!confirmBulkOverride(label, keys, decisions)) return;
+    if (!sessionHydrated) setSessionHydrated(true);
     const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Pause'; });
+    keys.forEach((idx) => { all[idx] = value; });
     setDecisions(all);
   };
 
-  const handleSetAllKeep = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Keep'; });
-    setDecisions(all);
-  };
-
-  const handleSetAllCutBid = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Cut Bid'; });
-    setDecisions(all);
-  };
-
-  const handleSetAllNegative = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Negative'; });
-    setDecisions(all);
-  };
+  const handleSetAllPause = () => applyBulk('Pause', 'Pause');
+  const handleSetAllKeep = () => applyBulk('Keep', 'Keep');
+  const handleSetAllCutBid = () => applyBulk('Cut Bid', 'Cut Bid');
+  const handleSetAllNegative = () => applyBulk('Negative', 'Negative');
 
   const handleClearAll = () => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions({});
     setCutBidPcts({});
   };
+
 
   const handleGenerateInline = async () => {
     setIsGenerating(true);

@@ -13,7 +13,9 @@
  */
 
 import * as React from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { clearSession, confirmBulkOverride, loadSavedSession, saveSession } from "@/lib/decisionSession";
+import { ResumeSessionBanner } from "@/components/shared/ResumeSessionBanner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, Loader2, XCircle, Download, Zap, List, Sparkles } from "lucide-react";

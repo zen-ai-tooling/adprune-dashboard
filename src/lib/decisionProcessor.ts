@@ -1,4 +1,6 @@
 import * as XLSX from "xlsx";
+
+const DEBUG_DECISION = false;
 import {
   normalizeSheetName,
   sanitizeHeader,

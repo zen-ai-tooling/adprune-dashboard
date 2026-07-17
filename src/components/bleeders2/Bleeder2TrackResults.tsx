@@ -386,7 +386,11 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
           { label: 'No decision', count: Math.max(0, result.bleeders.length - decisionsMade), color: '#D1D5DB' },
         ]}
         onDownload={onDownloadAmazon}
-        onStartNew={onStartNew}
+        onStartNew={() => {
+          clearSession(sessionModule, sessionFileRef.current);
+          setSavedSession(null);
+          onStartNew?.();
+        }}
         onViewFullResults={() => setShowFullResults(true)}
         accentColor="#0D9488"
         addressedSpend={addressedSpend}

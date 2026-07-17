@@ -418,6 +418,7 @@ const Index = () => {
   };
 
   const handleBleeder2DecisionUpload = async (file: File, track: Bleeder2Track, cutBidPct?: number) => {
+    if (!checkFileSize(file, toast)) return;
     try {
       const { processTrackDecisionFile } = await import("@/lib/bleeder2TrackDecisionProcessor");
       const result = await processTrackDecisionFile(file, track, cutBidPct ?? 25);

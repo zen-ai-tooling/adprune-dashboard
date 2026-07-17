@@ -53,7 +53,6 @@ interface ReviewAllModeProps {
   setDecisions: (next: Record<string, string>) => void;
   onGenerate: () => void;
   onDownloadLegacy: () => void;
-  onUploadDecisionFile: (file: File) => void;
   isGenerating: boolean;
   generateDone: boolean;
   decisionsMade: number;

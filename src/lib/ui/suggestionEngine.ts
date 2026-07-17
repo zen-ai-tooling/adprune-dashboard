@@ -17,6 +17,7 @@ interface BleederInput {
   matchType?: string;
   entity?: string;
   trackType: string;
+  thresholdAcos?: number; // The computed ACoS threshold for this track (e.g., 50 for SB/SD, 60 for SP)
 }
 
 export function suggestDecision(bleeder: BleederInput): Suggestion {
@@ -52,6 +53,54 @@ export function suggestDecision(bleeder: BleederInput): Suggestion {
       confidence: "medium",
       reason: `ACoS ${bleeder.acos.toFixed(0)}% — borderline, try bid reduction`,
       shortLabel: "Cut bid?",
+    };
+  }
+
+  // Threshold-relative logic — use when caller supplies a track threshold AND we have orders (ACoS is meaningful)
+  if (bleeder.thresholdAcos && bleeder.thresholdAcos > 0 && bleeder.orders > 0) {
+    const threshold = bleeder.thresholdAcos;
+    const acos = bleeder.acos;
+    const acosStr = acos.toFixed(1);
+    const thrStr = threshold.toFixed(0);
+    const ratio = (acos / threshold).toFixed(1);
+
+    if (acos >= 3 * threshold) {
+      return {
+        decision: "Negative",
+        confidence: "high",
+        reason: `ACoS ${acosStr}% is 3× your ${thrStr}% threshold — clear negative`,
+        shortLabel: "Negative",
+      };
+    }
+    if (acos >= 2 * threshold) {
+      return {
+        decision: "Negative",
+        confidence: "medium",
+        reason: `ACoS ${acosStr}% is ${ratio}× your ${thrStr}% threshold — strong negative candidate`,
+        shortLabel: "Negative",
+      };
+    }
+    if (acos >= 1.5 * threshold) {
+      return {
+        decision: "Cut Bid",
+        confidence: "medium",
+        reason: `ACoS ${acosStr}% is ${ratio}× your ${thrStr}% threshold — reduce bid`,
+        shortLabel: "Cut bid",
+      };
+    }
+    if (acos >= threshold) {
+      return {
+        decision: "Cut Bid",
+        confidence: "low",
+        reason: `ACoS ${acosStr}% is above your ${thrStr}% threshold — try bid reduction`,
+        shortLabel: "Cut bid?",
+      };
+    }
+    return {
+      decision: "Keep",
+      confidence: "low",
+      reason: `ACoS ${acosStr}% is under your ${thrStr}% threshold — monitor`,
+      shortLabel: "Keep",
     };
   }
 

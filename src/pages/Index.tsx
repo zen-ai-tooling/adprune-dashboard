@@ -319,6 +319,8 @@ const Index = () => {
       toast({ title: "Invalid file type", description: "Use .xlsx, .xls, .csv, or .zip", variant: "destructive" });
       return;
     }
+    if (!checkFileSize(file, toast)) return;
+
 
     setBleeder2TrackState((prev) => ({
       ...prev,

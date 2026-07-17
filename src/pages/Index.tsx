@@ -482,6 +482,8 @@ const Index = () => {
 
   // Lifetime handlers
   const handleLifetimeAnalysis = async (lifetimeReport: File, bulkFile: File) => {
+    if (!checkFileSize(lifetimeReport, toast)) return;
+    if (!checkFileSize(bulkFile, toast)) return;
     try {
       setLifetimeProcessing(true);
       const { analyzeLifetimeBleeders } = await import("@/lib/lifetimeBleederAnalysis");

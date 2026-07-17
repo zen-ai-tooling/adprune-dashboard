@@ -9,7 +9,6 @@ import {
   Loader2,
   Download,
   RotateCcw,
-  Upload as UploadIcon,
   X,
   ArrowRight,
   Plus,

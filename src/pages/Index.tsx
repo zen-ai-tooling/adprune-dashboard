@@ -548,6 +548,7 @@ const Index = () => {
   };
 
   const processFileUpload = async (files: File[], forceAnalysis: boolean = false) => {
+    if (!checkFileSize(files[0], toast)) return;
     const now = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
     const fileHash = await generateFileHash(files[0]);
 

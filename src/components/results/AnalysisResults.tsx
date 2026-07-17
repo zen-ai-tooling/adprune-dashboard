@@ -138,7 +138,23 @@ export const AnalysisResults = ({
   const [viewMode, setViewMode] = useState<"triage" | "review">("review");
   const lastDownloadRef = useRef<(() => void) | null>(null);
 
+  // ---------- Session auto-save (data-loss guard) ----------
+  const sessionModule = "bleeders1";
+  const sessionFileRef = useRef<string>(
+    `b1_${mode}_${allRows.length}_${allRows[0]?.sheet ?? "empty"}`,
+  );
+  const [savedSession, setSavedSession] = useState(() =>
+    loadSavedSession(sessionModule, sessionFileRef.current),
+  );
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+    saveSession(sessionModule, sessionFileRef.current, decisions, allRows.length);
+  }, [decisions, sessionHydrated, allRows.length]);
+
   const setDecisionWithFlash = (key: string, val: string) => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions((prev) => ({ ...prev, [key]: val }));
     let cls = "";
     if (val === "Pause") cls = "row-flash-pause";
@@ -146,6 +162,12 @@ export const AnalysisResults = ({
     else if (val.startsWith("Cut")) cls = "row-flash-cut";
     else if (val.startsWith("Negat")) cls = "row-flash-negate";
     if (cls) setFlashKey({ key, cls, ts: Date.now() });
+  };
+
+  // Wrap setDecisions passed to ReviewAllMode so bulk actions also trigger auto-save.
+  const setDecisionsTracked = (next: Record<string, string>) => {
+    if (!sessionHydrated) setSessionHydrated(true);
+    setDecisions(next);
   };
 
   const rowsBySheet = useMemo(() => {

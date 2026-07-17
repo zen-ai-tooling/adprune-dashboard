@@ -482,64 +482,6 @@ export const AnalysisResults = ({
     lastDownloadRef.current = null;
   };
 
-  const handleManualDecisionUpload = async (file: File) => {
-    setIsGenerating(true);
-    try {
-      const result = await processDecisions(file);
-      if (result.validation.errors.length === 0) {
-        const outBuffer = XLSX.write(result.workbook, { bookType: "xlsx", type: "array" });
-        const date = new Date()
-          .toLocaleDateString("en-US", {
-            timeZone: "America/Los_Angeles",
-            month: "2-digit",
-            day: "2-digit",
-            year: "numeric",
-          })
-          .replace(/\//g, "-");
-        const amazonFileName = `Bleeders_1_Amazon_${date}_PT.xlsx`;
-        const blob = new Blob([outBuffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = amazonFileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        setGeneratedFileName(amazonFileName);
-        setGenerateDone(true);
-        lastDownloadRef.current = () => {
-          const b2 = new Blob([outBuffer], {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          });
-          const u2 = URL.createObjectURL(b2);
-          const a2 = document.createElement("a");
-          a2.href = u2;
-          a2.download = amazonFileName;
-          document.body.appendChild(a2);
-          a2.click();
-          document.body.removeChild(a2);
-          URL.revokeObjectURL(u2);
-        };
-        toast.success("Amazon bulk file ready", {
-          description: "Decision file processed successfully",
-        });
-        if (result.validation.warnings.length > 0) {
-          toast.warning(result.validation.warnings[0]);
-        }
-      } else {
-        toast.error(result.validation.errors[0]);
-        console.error("[Manual Upload] Errors:", result.validation.errors);
-      }
-    } catch (err) {
-      console.error("[Manual Upload] Failed:", err);
-      toast.error("Failed to process decision file");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const sheetsCount = [...new Set(allRows.map((r) => r.sheet))].length;
   const decisionThresholdSpend = (totalSpend / Math.max(allRows.length, 1)) * 1.5; // highlight only above 1.5x mean

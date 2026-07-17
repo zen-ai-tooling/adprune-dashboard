@@ -208,13 +208,17 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
 
   // ── Bulk actions ──
   const setAll = (val: string) => {
+    const keys = bleeders.map((_, idx) => idx);
+    if (!confirmBulkOverride(val, keys, decisions)) return;
+    if (!sessionHydrated) setSessionHydrated(true);
     const all: Record<number, string> = {};
-    bleeders.forEach((_, idx) => {
-      all[idx] = val;
-    });
+    keys.forEach((idx) => { all[idx] = val; });
     setDecisions(all);
   };
-  const handleClearAll = () => setDecisions({});
+  const handleClearAll = () => {
+    if (!sessionHydrated) setSessionHydrated(true);
+    setDecisions({});
+  };
 
   // ── Generate Amazon file (inline) ──
   const handleGenerate = async () => {

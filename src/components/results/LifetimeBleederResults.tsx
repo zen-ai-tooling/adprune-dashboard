@@ -13,7 +13,9 @@
  */
 
 import * as React from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { clearSession, confirmBulkOverride, loadSavedSession, saveSession } from "@/lib/decisionSession";
+import { ResumeSessionBanner } from "@/components/shared/ResumeSessionBanner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, Loader2, XCircle, Download, Zap, List, Sparkles } from "lucide-react";
@@ -92,7 +94,23 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
   type FocusFilter = "all" | "pause" | "review" | "decided" | "highspend";
   const [focusFilter, setFocusFilter] = useState<FocusFilter>("all");
 
+  // ---------- Session auto-save (data-loss guard) ----------
+  const sessionModule = "lifetime_audit";
+  const sessionFileRef = useRef<string>(
+    `lifetime_${bleeders.length}_${bleeders[0]?.campaignName ?? "empty"}`,
+  );
+  const [savedSession, setSavedSession] = useState(() =>
+    loadSavedSession(sessionModule, sessionFileRef.current),
+  );
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+    saveSession(sessionModule, sessionFileRef.current, decisions, bleeders.length);
+  }, [decisions, sessionHydrated, sessionModule, bleeders.length]);
+
   const setDecisionWithFlash = (idx: number, val: string) => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions((prev) => ({ ...prev, [idx]: val }));
     let cls = "";
     if (val === "Pause") cls = "row-flash-pause";
@@ -190,13 +208,17 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
 
   // ── Bulk actions ──
   const setAll = (val: string) => {
+    const keys = bleeders.map((_, idx) => idx);
+    if (!confirmBulkOverride(val, keys, decisions)) return;
+    if (!sessionHydrated) setSessionHydrated(true);
     const all: Record<number, string> = {};
-    bleeders.forEach((_, idx) => {
-      all[idx] = val;
-    });
+    keys.forEach((idx) => { all[idx] = val; });
     setDecisions(all);
   };
-  const handleClearAll = () => setDecisions({});
+  const handleClearAll = () => {
+    if (!sessionHydrated) setSessionHydrated(true);
+    setDecisions({});
+  };
 
   // ── Generate Amazon file (inline) ──
   const handleGenerate = async () => {
@@ -259,6 +281,8 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
       const fileName = `Amazon_Bulk_Operations_Lifetime_${today}.xlsx`;
 
       setAmazonFile({ workbook: wb, fileName });
+      clearSession(sessionModule, sessionFileRef.current);
+      setSavedSession(null);
       toast.success("Amazon file ready", {
         description: `${decisionsMade} decisions exported`,
         duration: 3000,
@@ -345,7 +369,11 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
           { label: "No decision", count: Math.max(0, bleeders.length - decisionsMade), color: "#D1D5DB" },
         ]}
         onDownload={handleDownloadAmazon}
-        onStartNew={onStartNew}
+        onStartNew={() => {
+          clearSession(sessionModule, sessionFileRef.current);
+          setSavedSession(null);
+          onStartNew?.();
+        }}
         onViewFullResults={() => setShowFullResults(true)}
         accentColor="#A855F7"
         addressedSpend={addressedSpend}
@@ -356,6 +384,22 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
 
   return (
     <div className="space-y-5">
+      {savedSession && !sessionHydrated && (
+        <ResumeSessionBanner
+          saved={savedSession}
+          onResume={() => {
+            setDecisions(savedSession.decisions as Record<number, string>);
+            setSessionHydrated(true);
+            setSavedSession(null);
+          }}
+          onStartFresh={() => {
+            clearSession(sessionModule, sessionFileRef.current);
+            setSavedSession(null);
+            setSessionHydrated(true);
+          }}
+        />
+      )}
+
       {/* Mode toggle */}
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center p-0.5 rounded-full border border-border bg-card">

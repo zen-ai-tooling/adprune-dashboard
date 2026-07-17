@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { SortHeader, useSortable } from "@/components/shared/SortHeader";
 import { suggestB1Row } from "@/lib/ui/bleeder1Suggestion";
+import { confirmBulkOverride } from "@/lib/decisionSession";
 import { DecisionSelect, decisionRowClass } from "@/components/shared/DecisionSelect";
 import { useHistory } from "@/context/HistoryContext";
 
@@ -232,10 +233,10 @@ export const ReviewAllMode = ({
   };
 
   const setAllInSheet = (value: string) => {
+    const keys = currentRows.map((_, idx) => `${currentSheet}-ROWINDEX-${idx}`);
+    if (!confirmBulkOverride(value, keys, decisions)) return;
     const next = { ...decisions };
-    currentRows.forEach((_, idx) => {
-      next[`${currentSheet}-ROWINDEX-${idx}`] = value;
-    });
+    keys.forEach((key) => { next[key] = value; });
     setDecisions(next);
   };
 

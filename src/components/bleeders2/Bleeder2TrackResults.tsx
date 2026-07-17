@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { clearSession, confirmBulkOverride, loadSavedSession, saveSession } from "@/lib/decisionSession";
+import { ResumeSessionBanner } from "@/components/shared/ResumeSessionBanner";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -60,7 +62,21 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
   type FocusFilter = 'all' | 'pause' | 'review' | 'decided' | 'highspend';
   const [focusFilter, setFocusFilter] = useState<FocusFilter>('all');
 
+  // ---------- Session auto-save (data-loss guard) ----------
+  const sessionModule = `bleeders2_${result.trackType}`;
+  const sessionFileRef = useRef<string>(result.fileName);
+  const [savedSession, setSavedSession] = useState(() =>
+    loadSavedSession(sessionModule, sessionFileRef.current),
+  );
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+    saveSession(sessionModule, sessionFileRef.current, decisions, result.bleeders.length);
+  }, [decisions, sessionHydrated, sessionModule, result.bleeders.length]);
+
   const setDecisionWithFlash = (idx: number, val: string) => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions(prev => ({ ...prev, [idx]: val }));
     let cls = '';
     if (val === 'Pause') cls = 'row-flash-pause';
@@ -190,34 +206,26 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
 
   const isSearchTermSheet = result.trackType === 'SP';
 
-  const handleSetAllPause = () => {
+  const applyBulk = (label: string, value: string) => {
+    const keys = result.bleeders.map((_, idx) => idx);
+    if (!confirmBulkOverride(label, keys, decisions)) return;
+    if (!sessionHydrated) setSessionHydrated(true);
     const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Pause'; });
+    keys.forEach((idx) => { all[idx] = value; });
     setDecisions(all);
   };
 
-  const handleSetAllKeep = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Keep'; });
-    setDecisions(all);
-  };
-
-  const handleSetAllCutBid = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Cut Bid'; });
-    setDecisions(all);
-  };
-
-  const handleSetAllNegative = () => {
-    const all: Record<number, string> = {};
-    result.bleeders.forEach((_, idx) => { all[idx] = 'Negative'; });
-    setDecisions(all);
-  };
+  const handleSetAllPause = () => applyBulk('Pause', 'Pause');
+  const handleSetAllKeep = () => applyBulk('Keep', 'Keep');
+  const handleSetAllCutBid = () => applyBulk('Cut Bid', 'Cut Bid');
+  const handleSetAllNegative = () => applyBulk('Negative', 'Negative');
 
   const handleClearAll = () => {
+    if (!sessionHydrated) setSessionHydrated(true);
     setDecisions({});
     setCutBidPcts({});
   };
+
 
   const handleGenerateInline = async () => {
     setIsGenerating(true);
@@ -303,6 +311,8 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
         : 25;
       onUploadDecision(result.trackType, file, dominantCutPct);
       setGenerateDone(true);
+      clearSession(sessionModule, sessionFileRef.current);
+      setSavedSession(null);
     } catch (err) {
       console.error('[Generate] Failed:', err);
     } finally {
@@ -376,7 +386,11 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
           { label: 'No decision', count: Math.max(0, result.bleeders.length - decisionsMade), color: '#D1D5DB' },
         ]}
         onDownload={onDownloadAmazon}
-        onStartNew={onStartNew}
+        onStartNew={() => {
+          clearSession(sessionModule, sessionFileRef.current);
+          setSavedSession(null);
+          onStartNew?.();
+        }}
         onViewFullResults={() => setShowFullResults(true)}
         accentColor="#0D9488"
         addressedSpend={addressedSpend}
@@ -387,6 +401,22 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
 
   return (
     <div className="space-y-5">
+      {savedSession && !sessionHydrated && (
+        <ResumeSessionBanner
+          saved={savedSession}
+          onResume={() => {
+            setDecisions(savedSession.decisions as Record<number, string>);
+            setSessionHydrated(true);
+            setSavedSession(null);
+          }}
+          onStartFresh={() => {
+            clearSession(sessionModule, sessionFileRef.current);
+            setSavedSession(null);
+            setSessionHydrated(true);
+          }}
+        />
+      )}
+
       {/* Back to summary */}
       {amazonFile && showFullResults && (
         <button

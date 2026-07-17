@@ -502,6 +502,8 @@ export const AnalysisResults = ({
   };
 
   const handleStartNew = () => {
+    clearSession(sessionModule, sessionFileRef.current);
+    setSavedSession(null);
     setDecisions({});
     setGenerateDone(false);
     setGeneratedFileName("");

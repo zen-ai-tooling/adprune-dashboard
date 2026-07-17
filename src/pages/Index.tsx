@@ -970,21 +970,23 @@ const Index = () => {
             )}
 
             {activeModule === "bleeders_1" && processorType === "report-creator" && analysisResults && (
-              <AnalysisResults
-                summary={analysisResults.summary}
-                tables={analysisResults.tables}
-                csvData={analysisResults.csvData}
-                validation={analysisResults.validation}
-                topSpenders={analysisResults.topSpenders}
-                allRows={analysisResults.allRows}
-                formattedWorkbook={analysisResults.formattedWorkbook}
-                mode={analysisResults.mode || bleederMode}
-                onProceedToProcessor={() => {
-                  setShowProcessorUpload(true);
-                  setShowUpload(false);
-                  setCurrentStep(2);
-                }}
-              />
+              <ErrorBoundary moduleName="Bleeders 1.0">
+                <AnalysisResults
+                  summary={analysisResults.summary}
+                  tables={analysisResults.tables}
+                  csvData={analysisResults.csvData}
+                  validation={analysisResults.validation}
+                  topSpenders={analysisResults.topSpenders}
+                  allRows={analysisResults.allRows}
+                  formattedWorkbook={analysisResults.formattedWorkbook}
+                  mode={analysisResults.mode || bleederMode}
+                  onProceedToProcessor={() => {
+                    setShowProcessorUpload(true);
+                    setShowUpload(false);
+                    setCurrentStep(2);
+                  }}
+                />
+              </ErrorBoundary>
             )}
 
             {showProcessorUpload && !decisionResults && activeModule === "bleeders_1" && (

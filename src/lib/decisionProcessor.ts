@@ -372,7 +372,7 @@ export const processDecisions = async (file: File): Promise<ProcessingResult> =>
         const hasCol = headers.includes(canonicalName);
         if (hasCol) return;
 
-        console.log(`[DECISION] Added ${rawName} column to sheet:`, sheetName);
+        if (DEBUG_DECISION) console.log(`[DECISION] Added ${rawName} column to sheet:`, sheetName);
 
         // Add to headers
         rawHeaders.push(rawName);

@@ -384,6 +384,22 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
 
   return (
     <div className="space-y-5">
+      {savedSession && !sessionHydrated && (
+        <ResumeSessionBanner
+          saved={savedSession}
+          onResume={() => {
+            setDecisions(savedSession.decisions as Record<number, string>);
+            setSessionHydrated(true);
+            setSavedSession(null);
+          }}
+          onStartFresh={() => {
+            clearSession(sessionModule, sessionFileRef.current);
+            setSavedSession(null);
+            setSessionHydrated(true);
+          }}
+        />
+      )}
+
       {/* Mode toggle */}
       <div className="flex items-center justify-end">
         <div className="inline-flex items-center p-0.5 rounded-full border border-border bg-card">

@@ -1233,21 +1233,23 @@ const Index = () => {
               activeModule === "bleeders_2" &&
               bleeder2ActiveTrack &&
               bleeder2TrackState[bleeder2ActiveTrack].result && (
-                <Bleeder2TrackResults
-                  result={bleeder2TrackState[bleeder2ActiveTrack].result!}
-                  onDownload={() => handleDownloadDecisionSheet(bleeder2ActiveTrack!)}
-                  onUploadDecision={(_, file, pct) => handleBleeder2DecisionUpload(file, bleeder2ActiveTrack!, pct)}
-                  onAdjustThresholds={() => setBleeder2Stage("thresholds")}
-                  onUploadNewFile={(track) => handleResetTrack(track)}
-                  decisionFile={bleeder2TrackState[bleeder2ActiveTrack].decisionFile}
-                  amazonFile={bleeder2TrackState[bleeder2ActiveTrack].amazonFile}
-                  onDownloadAmazon={() => handleDownloadAmazonFile(bleeder2ActiveTrack!)}
-                  onStartNew={() => {
-                    setBleeder2ActiveTrack(null);
-                    setBleeder2Stage("picker");
-                  }}
-                  acosThresholdLabel={`${bleeder2Thresholds.targetACOS + 10}% (SB/SD) / ${bleeder2Thresholds.targetACOS + 20}% (SP)`}
-                />
+                <ErrorBoundary moduleName="Bleeders 2.0">
+                  <Bleeder2TrackResults
+                    result={bleeder2TrackState[bleeder2ActiveTrack].result!}
+                    onDownload={() => handleDownloadDecisionSheet(bleeder2ActiveTrack!)}
+                    onUploadDecision={(_, file, pct) => handleBleeder2DecisionUpload(file, bleeder2ActiveTrack!, pct)}
+                    onAdjustThresholds={() => setBleeder2Stage("thresholds")}
+                    onUploadNewFile={(track) => handleResetTrack(track)}
+                    decisionFile={bleeder2TrackState[bleeder2ActiveTrack].decisionFile}
+                    amazonFile={bleeder2TrackState[bleeder2ActiveTrack].amazonFile}
+                    onDownloadAmazon={() => handleDownloadAmazonFile(bleeder2ActiveTrack!)}
+                    onStartNew={() => {
+                      setBleeder2ActiveTrack(null);
+                      setBleeder2Stage("picker");
+                    }}
+                    acosThresholdLabel={`${bleeder2Thresholds.targetACOS + 10}% (SB/SD) / ${bleeder2Thresholds.targetACOS + 20}% (SP)`}
+                  />
+                </ErrorBoundary>
               )}
 
             {/* LIFETIME BLEEDERS */}
@@ -1260,18 +1262,24 @@ const Index = () => {
 
             {activeModule === "lifetime_bleeders" && lifetimeStage === "results" && lifetimeResult && (
               <div className="pt-4">
-                <LifetimeBleederResults
-                  result={lifetimeResult}
-                  onStartNew={() => {
-                    setLifetimeResult(null);
-                    setLifetimeStage("upload");
-                  }}
-                />
+                <ErrorBoundary moduleName="Lifetime Audit">
+                  <LifetimeBleederResults
+                    result={lifetimeResult}
+                    onStartNew={() => {
+                      setLifetimeResult(null);
+                      setLifetimeStage("upload");
+                    }}
+                  />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* SEARCH TERM HARVESTING */}
-            {activeModule === "search_harvest" && <SearchTermHarvesting />}
+            {activeModule === "search_harvest" && (
+              <ErrorBoundary moduleName="Search Term Harvesting">
+                <SearchTermHarvesting />
+              </ErrorBoundary>
+            )}
 
             <div ref={messagesEndRef} />
 

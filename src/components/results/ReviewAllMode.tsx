@@ -233,10 +233,10 @@ export const ReviewAllMode = ({
   };
 
   const setAllInSheet = (value: string) => {
+    const keys = currentRows.map((_, idx) => `${currentSheet}-ROWINDEX-${idx}`);
+    if (!confirmBulkOverride(value, keys, decisions)) return;
     const next = { ...decisions };
-    currentRows.forEach((_, idx) => {
-      next[`${currentSheet}-ROWINDEX-${idx}`] = value;
-    });
+    keys.forEach((key) => { next[key] = value; });
     setDecisions(next);
   };
 

@@ -568,6 +568,22 @@ export const AnalysisResults = ({
 
   return (
     <div className="space-y-5">
+      {savedSession && !sessionHydrated && (
+        <ResumeSessionBanner
+          saved={savedSession}
+          onResume={() => {
+            setDecisions(savedSession.decisions as Record<string, string>);
+            setSessionHydrated(true);
+            setSavedSession(null);
+          }}
+          onStartFresh={() => {
+            clearSession(sessionModule, sessionFileRef.current);
+            setSavedSession(null);
+            setSessionHydrated(true);
+          }}
+        />
+      )}
+
       {/* Lifetime mode notice — hidden during Triage */}
       {mode === "lifetime" && viewMode !== "triage" && (
         <div className="rounded-lg border border-[hsl(var(--amber-border))] bg-[hsl(var(--amber-light))] px-4 py-3 flex items-start gap-2.5">

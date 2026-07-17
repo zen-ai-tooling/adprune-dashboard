@@ -26,6 +26,7 @@ import {
   type HarvestExportSummary,
 } from "@/lib/ui/searchTermHarvest";
 import type { BulkIdIndex } from "@/lib/amazonBulkIdIndex";
+import { checkFileSize } from "@/lib/fileSizeGuard";
 
 // ── Local-only reducer (no global state touched) ──
 type Action =

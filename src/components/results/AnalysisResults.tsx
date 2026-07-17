@@ -841,7 +841,7 @@ export const AnalysisResults = ({
           setDecisions={setDecisions}
           onGenerate={handleGenerateDecisionFile}
           onDownloadLegacy={handleDownload}
-          onUploadDecisionFile={handleManualDecisionUpload}
+          
           isGenerating={isGenerating}
           generateDone={generateDone}
           decisionsMade={decisionsMade}

@@ -177,6 +177,7 @@ export const SearchTermHarvesting: React.FC = () => {
       toast({ title: "Invalid file type", description: "Reference bulk must be .xlsx", variant: "destructive" });
       return;
     }
+    if (!checkFileSize(file, toast)) return;
     try {
       const idx = await parseReferenceBulkFile(file);
       setBulkIdIndex(idx);

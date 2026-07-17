@@ -311,6 +311,8 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
         : 25;
       onUploadDecision(result.trackType, file, dominantCutPct);
       setGenerateDone(true);
+      clearSession(sessionModule, sessionFileRef.current);
+      setSavedSession(null);
     } catch (err) {
       console.error('[Generate] Failed:', err);
     } finally {

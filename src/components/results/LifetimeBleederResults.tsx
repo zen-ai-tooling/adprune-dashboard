@@ -369,7 +369,11 @@ export const LifetimeBleederResults: React.FC<LifetimeBleederResultsProps> = ({
           { label: "No decision", count: Math.max(0, bleeders.length - decisionsMade), color: "#D1D5DB" },
         ]}
         onDownload={handleDownloadAmazon}
-        onStartNew={onStartNew}
+        onStartNew={() => {
+          clearSession(sessionModule, sessionFileRef.current);
+          setSavedSession(null);
+          onStartNew?.();
+        }}
         onViewFullResults={() => setShowFullResults(true)}
         accentColor="#A855F7"
         addressedSpend={addressedSpend}

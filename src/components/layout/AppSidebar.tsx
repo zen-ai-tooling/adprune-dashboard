@@ -1,6 +1,5 @@
-import React, { useState } from "react";
-import { ArrowLeft, Clock, Plus, Check, ChevronsUpDown } from "lucide-react";
-import { useClient } from "@/context/ClientContext";
+import React from "react";
+import { ArrowLeft, Clock, Check } from "lucide-react";
 import type { Bleeder2Track } from "@/components/bleeders2/TrackSelector";
 
 type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | "search_harvest" | null;

@@ -19,9 +19,9 @@ interface ClientContextValue {
 }
 
 const defaultClient: Client = {
-  id: "phico-001",
-  name: "Phico Ventures",
-  initials: "PV",
+  id: "default",
+  name: "My Account",
+  initials: "AD",
   acosTarget: 35,
   fewerThanOrders: 5,
   excludeRanking: true,

@@ -33,7 +33,7 @@ const ClientContext = createContext<ClientContextValue | null>(null);
 export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [clients, setClients] = useState<Client[]>(() => {
     try {
-      const saved = localStorage.getItem("gno-adops-clients");
+      const saved = localStorage.getItem("adprune-settings");
       return saved ? JSON.parse(saved) : [defaultClient];
     } catch {
       return [defaultClient];
@@ -42,13 +42,13 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [activeClient, setActiveClientState] = useState<Client>(() => {
     try {
-      const savedId = localStorage.getItem("gno-adops-active-client");
-      const saved = localStorage.getItem("gno-adops-clients");
+      const savedId = localStorage.getItem("adprune-active-settings");
+      const saved = localStorage.getItem("adprune-settings");
       if (saved && savedId) {
         const parsed = JSON.parse(saved);
         return parsed.find((c: Client) => c.id === savedId) ?? parsed[0] ?? defaultClient;
       }
-      const saved2 = localStorage.getItem("gno-adops-clients");
+      const saved2 = localStorage.getItem("adprune-settings");
       if (saved2) {
         const parsed = JSON.parse(saved2);
         return parsed[0] ?? defaultClient;
@@ -58,12 +58,12 @@ export const ClientProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   useEffect(() => {
-    localStorage.setItem("gno-adops-clients", JSON.stringify(clients));
+    localStorage.setItem("adprune-settings", JSON.stringify(clients));
   }, [clients]);
 
   const setActiveClient = (client: Client) => {
     setActiveClientState(client);
-    localStorage.setItem("gno-adops-active-client", client.id);
+    localStorage.setItem("adprune-active-settings", client.id);
   };
 
   const addClient = (data: Omit<Client, "id" | "createdAt">) => {

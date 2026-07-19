@@ -51,13 +51,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   showHistoryView = false,
   setShowHistoryView,
 }) => {
-  const { clients, activeClient, setActiveClient, addClient } = useClient();
-  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newClientName, setNewClientName] = useState("");
-  const [newClientAcos, setNewClientAcos] = useState(35);
-
   const onHome = !activeModule && !showHistoryView;
+
 
   return (
     <aside className="app-sidebar w-[240px] flex-shrink-0 h-screen sticky top-0 flex flex-col bg-sidebar text-sidebar-foreground relative z-10">

@@ -392,7 +392,7 @@ const Landing: React.FC = () => {
                 >
                   {s.n}
                 </div>
-                <div
+                <h3
                   style={{
                     fontSize: 20,
                     fontWeight: 600,
@@ -401,7 +401,7 @@ const Landing: React.FC = () => {
                   }}
                 >
                   {s.t}
-                </div>
+                </h3>
                 <div
                   style={{
                     fontSize: 14,

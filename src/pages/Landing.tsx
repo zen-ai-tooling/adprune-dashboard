@@ -549,7 +549,7 @@ const Landing: React.FC = () => {
                   ["Bleeder detection", "From $99/mo", "✓ Free"],
                   ["Search term harvesting", "From $199/mo", "✓ Free"],
                   ["Amazon bulk file output", "API required", "✓ Upload & download"],
-                  ["Smart suggestions", "Basic rules", "✓ Threshold-aware AI"],
+                  ["Smart suggestions", "Basic rules", "✓ Threshold-aware suggestions"],
                   ["Setup time", "API keys + onboarding", "✓ Zero — just upload"],
                   ["Price", "$275/mo average", "$0"],
                 ].map(([f, o, a], i) => {

@@ -627,8 +627,10 @@ const Landing: React.FC = () => {
               AdPrune
             </div>
             <div style={{ fontSize: 13, color: COLORS.faint }}>
-              Built by JJ · <a href="#" className="lp-link">Feedback</a> ·{" "}
-              <a href="#" className="lp-link">Changelog</a>
+              Built by JJ ·{" "}
+              <a href="mailto:hello@adprune.com" className="lp-link">
+                Feedback
+              </a>
             </div>
           </div>
         </section>

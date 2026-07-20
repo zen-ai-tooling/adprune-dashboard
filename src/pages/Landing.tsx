@@ -468,7 +468,7 @@ const Landing: React.FC = () => {
                       background: t.dot,
                     }}
                   />
-                  <span
+                  <h3
                     style={{
                       fontSize: 20,
                       fontWeight: 600,
@@ -476,7 +476,7 @@ const Landing: React.FC = () => {
                     }}
                   >
                     {t.title}
-                  </span>
+                  </h3>
                   {t.pill && (
                     <span
                       style={{

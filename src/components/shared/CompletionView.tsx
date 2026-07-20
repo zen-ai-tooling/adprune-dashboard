@@ -215,6 +215,85 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
             )}
           </div>
 
+          {/* Email capture — early access for live account sync */}
+          <div
+            className="mt-5 mx-auto"
+            style={{
+              maxWidth: 360,
+              animation: 'cv-fade-in 250ms ease-out 500ms both',
+            }}
+          >
+            {emailSubmitted ? (
+              <div
+                className="flex items-center justify-center gap-1.5"
+                style={{ fontSize: 13, color: '#0071E3' }}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                You're on the list.
+              </div>
+            ) : (
+              <form onSubmit={handleEmailSubmit} className="flex flex-col items-center">
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: '#6B7280',
+                    marginBottom: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  Want early access when live account sync launches?
+                </p>
+                <div className="flex items-center" style={{ gap: 8, width: '100%' }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(false);
+                    }}
+                    placeholder="you@example.com"
+                    disabled={emailSubmitting}
+                    style={{
+                      flex: 1,
+                      height: 36,
+                      padding: '0 12px',
+                      fontSize: 13,
+                      color: '#374151',
+                      background: '#FFFFFF',
+                      border: `1px solid ${emailError ? '#EF4444' : '#E5E7EB'}`,
+                      borderRadius: 8,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={emailSubmitting}
+                    className="btn-press"
+                    style={{
+                      height: 36,
+                      padding: '0 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#0071E3',
+                      background: '#FFFFFF',
+                      border: '1px solid #0071E3',
+                      borderRadius: 8,
+                      opacity: emailSubmitting ? 0.6 : 1,
+                    }}
+                  >
+                    {emailSubmitting ? '…' : 'Notify me'}
+                  </button>
+                </div>
+                {emailError && (
+                  <p style={{ fontSize: 12, color: '#EF4444', marginTop: 6 }}>
+                    Please enter a valid email address.
+                  </p>
+                )}
+              </form>
+            )}
+          </div>
+
+
           <p
             className="mt-3 truncate"
             title={fileName}

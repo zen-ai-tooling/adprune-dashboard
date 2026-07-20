@@ -34,8 +34,8 @@ const COLORS = {
   bg: "#0A0A0B",
   text: "#FAFAFA",
   sub: "#888888",
-  muted: "#555555",
-  faint: "#333333",
+  muted: "#7A7A7A",
+  faint: "#4D4D4D",
   accent: "#3B82F6",
   card: "rgba(255, 255, 255, 0.03)",
   border: "rgba(255, 255, 255, 0.06)",
@@ -50,16 +50,55 @@ const Landing: React.FC = () => {
   useEffect(() => {
     const prevTitle = document.title;
     document.title = "AdPrune — Free Amazon Ads bleeder detection & optimization";
+
+    const ensureMeta = (name: string, content: string) => {
+      const selector = name.startsWith("og:")
+        ? `meta[property="${name}"]`
+        : `meta[name="${name}"]`;
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      const prev = el?.getAttribute("content") ?? "";
+      if (!el) {
+        el = document.createElement("meta");
+        if (name.startsWith("og:")) {
+          el.setAttribute("property", name);
+        } else {
+          el.setAttribute("name", name);
+        }
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+      return { el, prev };
+    };
+
     const meta = document.querySelector('meta[name="description"]');
     const prevDesc = meta?.getAttribute("content") ?? "";
     meta?.setAttribute(
       "content",
       "AdPrune finds your worst-performing Amazon Ads keywords and targets in 60 seconds. Free, no login, no API keys.",
     );
+
+    const ogTags = [
+      ["og:title", "AdPrune — Free Amazon Ads bleeder detection & optimization"],
+      [
+        "og:description",
+        "AdPrune finds your worst-performing Amazon Ads keywords and targets in 60 seconds. Free, no login, no API keys.",
+      ],
+      ["og:type", "website"],
+      ["og:image", "/og-image.png"],
+      ["twitter:card", "summary_large_image"],
+    ] as const;
+
+    const restored: { el: HTMLMetaElement; prev: string }[] = ogTags.map(
+      ([name, content]) => ensureMeta(name, content),
+    );
+
     document.documentElement.style.scrollBehavior = "smooth";
     return () => {
       document.title = prevTitle;
       if (meta) meta.setAttribute("content", prevDesc);
+      restored.forEach(({ el, prev }) => {
+        if (prev) el.setAttribute("content", prev);
+      });
       document.documentElement.style.scrollBehavior = "";
     };
   }, []);
@@ -232,6 +271,12 @@ const Landing: React.FC = () => {
           >
             No login. No API keys. No subscription.
           </div>
+          <div
+            data-reveal
+            style={{ fontSize: 13, color: COLORS.muted, marginTop: 4 }}
+          >
+            Your file is processed in your browser and never stored.
+          </div>
 
           {/* Browser mockup */}
           <div
@@ -302,37 +347,6 @@ const Landing: React.FC = () => {
             </div>
           </div>
 
-          {/* SOCIAL PROOF */}
-          <div style={{ marginTop: 80 }}>
-            <div data-reveal style={{ fontSize: 13, color: COLORS.muted }}>
-              Trusted by Amazon sellers managing $500K+ in annual ad spend
-            </div>
-            <div
-              data-reveal
-              style={{
-                marginTop: 24,
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: 48,
-              }}
-            >
-              {["Brand A", "Brand B", "Brand C", "Brand D", "Brand E"].map(
-                (b) => (
-                  <span
-                    key={b}
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.faint,
-                    }}
-                  >
-                    {b}
-                  </span>
-                ),
-              )}
-            </div>
-          </div>
         </section>
 
         {/* HOW IT WORKS */}
@@ -378,7 +392,7 @@ const Landing: React.FC = () => {
                 >
                   {s.n}
                 </div>
-                <div
+                <h3
                   style={{
                     fontSize: 20,
                     fontWeight: 600,
@@ -387,7 +401,7 @@ const Landing: React.FC = () => {
                   }}
                 >
                   {s.t}
-                </div>
+                </h3>
                 <div
                   style={{
                     fontSize: 14,
@@ -454,7 +468,7 @@ const Landing: React.FC = () => {
                       background: t.dot,
                     }}
                   />
-                  <span
+                  <h3
                     style={{
                       fontSize: 20,
                       fontWeight: 600,
@@ -462,7 +476,7 @@ const Landing: React.FC = () => {
                     }}
                   >
                     {t.title}
-                  </span>
+                  </h3>
                   {t.pill && (
                     <span
                       style={{
@@ -535,7 +549,7 @@ const Landing: React.FC = () => {
                   ["Bleeder detection", "From $99/mo", "✓ Free"],
                   ["Search term harvesting", "From $199/mo", "✓ Free"],
                   ["Amazon bulk file output", "API required", "✓ Upload & download"],
-                  ["Smart suggestions", "Basic rules", "✓ Threshold-aware AI"],
+                  ["Smart suggestions", "Basic rules", "✓ Threshold-aware suggestions"],
                   ["Setup time", "API keys + onboarding", "✓ Zero — just upload"],
                   ["Price", "$275/mo average", "$0"],
                 ].map(([f, o, a], i) => {
@@ -613,8 +627,10 @@ const Landing: React.FC = () => {
               AdPrune
             </div>
             <div style={{ fontSize: 13, color: COLORS.faint }}>
-              Built by JJ · <a href="#" className="lp-link">Feedback</a> ·{" "}
-              <a href="#" className="lp-link">Changelog</a>
+              Built by JJ ·{" "}
+              <a href="mailto:hello@adprune.com" className="lp-link">
+                Feedback
+              </a>
             </div>
           </div>
         </section>

@@ -55,6 +55,50 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
     const t = setTimeout(() => setShowRecap(true), 400);
     return () => clearTimeout(t);
   }, []);
+
+  const [email, setEmail] = React.useState("");
+  const [emailSubmitted, setEmailSubmitted] = React.useState(false);
+  const [emailSubmitting, setEmailSubmitting] = React.useState(false);
+  const [emailError, setEmailError] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      setEmailSubmitted(sessionStorage.getItem(EMAIL_CAPTURE_SESSION_KEY) === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) {
+      setEmailError(true);
+      return;
+    }
+    setEmailError(false);
+    setEmailSubmitting(true);
+    try {
+      if (EMAIL_CAPTURE_WEBHOOK_URL && EMAIL_CAPTURE_WEBHOOK_URL !== "REPLACE_ME") {
+        await fetch(EMAIL_CAPTURE_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed, source: "completion_view" }),
+        });
+      }
+    } catch {
+      // Fail silently — still show confirmation.
+    } finally {
+      setEmailSubmitting(false);
+      setEmailSubmitted(true);
+      try {
+        sessionStorage.setItem(EMAIL_CAPTURE_SESSION_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const findCount = (re: RegExp) =>
     breakdown.filter((b) => re.test(b.label)).reduce((s, b) => s + b.count, 0);
   const pausedCount = findCount(/^paused?$/i);

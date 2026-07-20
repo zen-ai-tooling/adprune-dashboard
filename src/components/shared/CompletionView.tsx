@@ -1,6 +1,13 @@
 import * as React from 'react';
 import { CheckCircle2, Download, ArrowRight } from 'lucide-react';
 
+const EMAIL_CAPTURE_WEBHOOK_URL = "REPLACE_ME";
+const EMAIL_CAPTURE_SESSION_KEY = "adprune_completion_email_capture";
+
+const isValidEmail = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+
 export interface CompletionSummaryItem {
   label: string;
   value: string;

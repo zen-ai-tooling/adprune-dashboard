@@ -1,6 +1,13 @@
 import * as React from 'react';
 import { CheckCircle2, Download, ArrowRight } from 'lucide-react';
 
+const EMAIL_CAPTURE_WEBHOOK_URL = "REPLACE_ME";
+const EMAIL_CAPTURE_SESSION_KEY = "adprune_completion_email_capture";
+
+const isValidEmail = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+
 export interface CompletionSummaryItem {
   label: string;
   value: string;
@@ -48,6 +55,50 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
     const t = setTimeout(() => setShowRecap(true), 400);
     return () => clearTimeout(t);
   }, []);
+
+  const [email, setEmail] = React.useState("");
+  const [emailSubmitted, setEmailSubmitted] = React.useState(false);
+  const [emailSubmitting, setEmailSubmitting] = React.useState(false);
+  const [emailError, setEmailError] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      setEmailSubmitted(sessionStorage.getItem(EMAIL_CAPTURE_SESSION_KEY) === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!isValidEmail(trimmed)) {
+      setEmailError(true);
+      return;
+    }
+    setEmailError(false);
+    setEmailSubmitting(true);
+    try {
+      if (EMAIL_CAPTURE_WEBHOOK_URL && EMAIL_CAPTURE_WEBHOOK_URL !== "REPLACE_ME") {
+        await fetch(EMAIL_CAPTURE_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed, source: "completion_view" }),
+        });
+      }
+    } catch {
+      // Fail silently — still show confirmation.
+    } finally {
+      setEmailSubmitting(false);
+      setEmailSubmitted(true);
+      try {
+        sessionStorage.setItem(EMAIL_CAPTURE_SESSION_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const findCount = (re: RegExp) =>
     breakdown.filter((b) => re.test(b.label)).reduce((s, b) => s + b.count, 0);
   const pausedCount = findCount(/^paused?$/i);
@@ -163,6 +214,85 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
               </button>
             )}
           </div>
+
+          {/* Email capture — early access for live account sync */}
+          <div
+            className="mt-5 mx-auto"
+            style={{
+              maxWidth: 360,
+              animation: 'cv-fade-in 250ms ease-out 500ms both',
+            }}
+          >
+            {emailSubmitted ? (
+              <div
+                className="flex items-center justify-center gap-1.5"
+                style={{ fontSize: 13, color: '#0071E3' }}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                You're on the list.
+              </div>
+            ) : (
+              <form onSubmit={handleEmailSubmit} className="flex flex-col items-center">
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: '#6B7280',
+                    marginBottom: 8,
+                    textAlign: 'center',
+                  }}
+                >
+                  Want early access when live account sync launches?
+                </p>
+                <div className="flex items-center" style={{ gap: 8, width: '100%' }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(false);
+                    }}
+                    placeholder="you@example.com"
+                    disabled={emailSubmitting}
+                    style={{
+                      flex: 1,
+                      height: 36,
+                      padding: '0 12px',
+                      fontSize: 13,
+                      color: '#374151',
+                      background: '#FFFFFF',
+                      border: `1px solid ${emailError ? '#EF4444' : '#E5E7EB'}`,
+                      borderRadius: 8,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={emailSubmitting}
+                    className="btn-press"
+                    style={{
+                      height: 36,
+                      padding: '0 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#0071E3',
+                      background: '#FFFFFF',
+                      border: '1px solid #0071E3',
+                      borderRadius: 8,
+                      opacity: emailSubmitting ? 0.6 : 1,
+                    }}
+                  >
+                    {emailSubmitting ? '…' : 'Notify me'}
+                  </button>
+                </div>
+                {emailError && (
+                  <p style={{ fontSize: 12, color: '#EF4444', marginTop: 6 }}>
+                    Please enter a valid email address.
+                  </p>
+                )}
+              </form>
+            )}
+          </div>
+
 
           <p
             className="mt-3 truncate"

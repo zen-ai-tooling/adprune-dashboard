@@ -271,6 +271,12 @@ const Landing: React.FC = () => {
           >
             No login. No API keys. No subscription.
           </div>
+          <div
+            data-reveal
+            style={{ fontSize: 13, color: COLORS.muted, marginTop: 4 }}
+          >
+            Your file is processed in your browser and never stored.
+          </div>
 
           {/* Browser mockup */}
           <div

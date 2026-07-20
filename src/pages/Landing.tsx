@@ -347,37 +347,6 @@ const Landing: React.FC = () => {
             </div>
           </div>
 
-          {/* SOCIAL PROOF */}
-          <div style={{ marginTop: 80 }}>
-            <div data-reveal style={{ fontSize: 13, color: COLORS.muted }}>
-              Trusted by Amazon sellers managing $500K+ in annual ad spend
-            </div>
-            <div
-              data-reveal
-              style={{
-                marginTop: 24,
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: 48,
-              }}
-            >
-              {["Brand A", "Brand B", "Brand C", "Brand D", "Brand E"].map(
-                (b) => (
-                  <span
-                    key={b}
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.faint,
-                    }}
-                  >
-                    {b}
-                  </span>
-                ),
-              )}
-            </div>
-          </div>
         </section>
 
         {/* HOW IT WORKS */}

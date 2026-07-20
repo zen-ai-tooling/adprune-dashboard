@@ -50,16 +50,55 @@ const Landing: React.FC = () => {
   useEffect(() => {
     const prevTitle = document.title;
     document.title = "AdPrune — Free Amazon Ads bleeder detection & optimization";
+
+    const ensureMeta = (name: string, content: string) => {
+      const selector = name.startsWith("og:")
+        ? `meta[property="${name}"]`
+        : `meta[name="${name}"]`;
+      let el = document.querySelector(selector) as HTMLMetaElement | null;
+      const prev = el?.getAttribute("content") ?? "";
+      if (!el) {
+        el = document.createElement("meta");
+        if (name.startsWith("og:")) {
+          el.setAttribute("property", name);
+        } else {
+          el.setAttribute("name", name);
+        }
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+      return { el, prev };
+    };
+
     const meta = document.querySelector('meta[name="description"]');
     const prevDesc = meta?.getAttribute("content") ?? "";
     meta?.setAttribute(
       "content",
       "AdPrune finds your worst-performing Amazon Ads keywords and targets in 60 seconds. Free, no login, no API keys.",
     );
+
+    const ogTags = [
+      ["og:title", "AdPrune — Free Amazon Ads bleeder detection & optimization"],
+      [
+        "og:description",
+        "AdPrune finds your worst-performing Amazon Ads keywords and targets in 60 seconds. Free, no login, no API keys.",
+      ],
+      ["og:type", "website"],
+      ["og:image", "/og-image.png"],
+      ["twitter:card", "summary_large_image"],
+    ] as const;
+
+    const restored: { el: HTMLMetaElement; prev: string }[] = ogTags.map(
+      ([name, content]) => ensureMeta(name, content),
+    );
+
     document.documentElement.style.scrollBehavior = "smooth";
     return () => {
       document.title = prevTitle;
       if (meta) meta.setAttribute("content", prevDesc);
+      restored.forEach(({ el, prev }) => {
+        if (prev) el.setAttribute("content", prev);
+      });
       document.documentElement.style.scrollBehavior = "";
     };
   }, []);

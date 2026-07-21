@@ -56,48 +56,28 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
     return () => clearTimeout(t);
   }, []);
 
-  const [email, setEmail] = React.useState("");
-  const [emailSubmitted, setEmailSubmitted] = React.useState(false);
-  const [emailSubmitting, setEmailSubmitting] = React.useState(false);
-  const [emailError, setEmailError] = React.useState(false);
+  const beehiivContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    try {
-      setEmailSubmitted(sessionStorage.getItem(EMAIL_CAPTURE_SESSION_KEY) === "1");
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = email.trim();
-    if (!isValidEmail(trimmed)) {
-      setEmailError(true);
+    const container = beehiivContainerRef.current;
+    if (!container || container.querySelector("script[data-beehiiv-form]")) {
       return;
     }
-    setEmailError(false);
-    setEmailSubmitting(true);
-    try {
-      if (EMAIL_CAPTURE_WEBHOOK_URL && EMAIL_CAPTURE_WEBHOOK_URL !== "REPLACE_ME") {
-        await fetch(EMAIL_CAPTURE_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: trimmed, source: "completion_view" }),
-        });
-      }
-    } catch {
-      // Fail silently — still show confirmation.
-    } finally {
-      setEmailSubmitting(false);
-      setEmailSubmitted(true);
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = "https://subscribe-forms.beehiiv.com/v3/loader.js";
+    script.setAttribute("data-beehiiv-form", "00ad444b-3d9d-47f8-8deb-f511141d8565");
+    container.appendChild(script);
+    return () => {
       try {
-        sessionStorage.setItem(EMAIL_CAPTURE_SESSION_KEY, "1");
+        if (container.contains(script)) {
+          container.removeChild(script);
+        }
       } catch {
         // ignore
       }
-    }
-  };
+    };
+  }, []);
 
   const findCount = (re: RegExp) =>
     breakdown.filter((b) => re.test(b.label)).reduce((s, b) => s + b.count, 0);

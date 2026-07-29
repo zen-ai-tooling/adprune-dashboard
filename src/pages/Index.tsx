@@ -33,6 +33,7 @@ import { SessionLogView } from "@/components/history/SessionLogView";
 import { AnalyzingView } from "@/components/shared/AnalyzingView";
 import { SearchTermHarvesting } from "@/components/harvest/SearchTermHarvesting";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { ExitIntentModal } from "@/components/shared/ExitIntentModal";
 import { checkFileSize } from "@/lib/fileSizeGuard";
 import * as XLSX from "xlsx";
 
@@ -1313,6 +1314,8 @@ const Index = () => {
       />
 
       <HelpDrawer open={showHelpDrawer} onClose={() => setShowHelpDrawer(false)} />
+
+      <ExitIntentModal isSuppressed={() => document.body.dataset.rowDetailOpen === 'true'} />
     </div>
   );
 };

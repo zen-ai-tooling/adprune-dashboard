@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { CheckCircle2, Download, ArrowRight } from 'lucide-react';
+import { EmailCaptureForm } from './EmailCaptureForm';
 
 export interface CompletionSummaryItem {
   label: string;
@@ -49,28 +50,8 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
     return () => clearTimeout(t);
   }, []);
 
-  const beehiivContainerRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    const container = beehiivContainerRef.current;
-    if (!container || container.querySelector("script[data-beehiiv-form]")) {
-      return;
-    }
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://subscribe-forms.beehiiv.com/v3/loader.js";
-    script.setAttribute("data-beehiiv-form", "00ad444b-3d9d-47f8-8deb-f511141d8565");
-    container.appendChild(script);
-    return () => {
-      try {
-        if (container.contains(script)) {
-          container.removeChild(script);
-        }
-      } catch {
-        // ignore
-      }
-    };
-  }, []);
+
 
   const findCount = (re: RegExp) =>
     breakdown.filter((b) => re.test(b.label)).reduce((s, b) => s + b.count, 0);
@@ -189,14 +170,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
           </div>
 
           {/* Beehiiv newsletter embed — early access for live account sync */}
-          <div
-            ref={beehiivContainerRef}
-            className="mx-auto"
-            style={{
-              maxWidth: 400,
-              marginTop: 24,
-            }}
-          />
+          <EmailCaptureForm maxWidth={400} style={{ marginTop: 24 }} />
 
 
 

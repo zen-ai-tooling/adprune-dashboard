@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import landingHero from "@/assets/landing-screenshot-minimal-blur.png.asset.json";
+
 
 const useReveal = () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -331,20 +333,20 @@ const Landing: React.FC = () => {
                 adprune.com/app
               </div>
             </div>
-            <div
+            <img
+              src={landingHero.url}
+              alt="AdPrune decision table showing Amazon Ads bleeders ranked by wasted spend"
               style={{
+                width: "100%",
+                height: "auto",
                 aspectRatio: "16 / 9",
-                background:
-                  "linear-gradient(135deg, #111 0%, #1a1a2e 50%, #111 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: COLORS.faint,
-                fontSize: 14,
+                objectFit: "cover",
+                objectPosition: "top center",
+                display: "block",
+                background: "#111111",
               }}
-            >
-              Product screenshot
-            </div>
+            />
+
           </div>
 
         </section>

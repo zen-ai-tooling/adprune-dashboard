@@ -285,7 +285,7 @@ const Landing: React.FC = () => {
             data-reveal
             style={{
               marginTop: 64,
-              background: COLORS.card,
+              backgroundColor: "#111111",
               border: "1px solid rgba(255, 255, 255, 0.08)",
               borderRadius: 16,
               overflow: "hidden",
@@ -336,6 +336,10 @@ const Landing: React.FC = () => {
             <img
               src={landingHero.url}
               alt="AdPrune decision table showing Amazon Ads bleeders ranked by wasted spend"
+              width={1492}
+              height={839}
+              loading="eager"
+              fetchPriority="high"
               style={{
                 width: "100%",
                 height: "auto",

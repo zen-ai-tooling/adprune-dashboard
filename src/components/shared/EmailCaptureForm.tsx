@@ -1,0 +1,69 @@
+import * as React from "react";
+
+export const EMAIL_CAPTURE_SUBMITTED_KEY = "emailCaptureSubmitted";
+const BEEHIIV_FORM_ID = "00ad444b-3d9d-47f8-8deb-f511141d8565";
+
+interface EmailCaptureFormProps {
+  maxWidth?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/**
+ * Shared beehiiv email-capture embed. Injects the loader script once per mount
+ * and marks the session as "submitted" when the embedded form dispatches a
+ * submit event or posts a success message.
+ */
+export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
+  maxWidth = 400,
+  className,
+  style,
+}) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!container.querySelector("script[data-beehiiv-form]")) {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://subscribe-forms.beehiiv.com/v3/loader.js";
+      script.setAttribute("data-beehiiv-form", BEEHIIV_FORM_ID);
+      container.appendChild(script);
+    }
+
+    const markSubmitted = () => {
+      try {
+        sessionStorage.setItem(EMAIL_CAPTURE_SUBMITTED_KEY, "1");
+      } catch {
+        // ignore
+      }
+    };
+
+    const onSubmit = () => markSubmitted();
+    container.addEventListener("submit", onSubmit, true);
+
+    const onMessage = (e: MessageEvent) => {
+      const src = typeof e.origin === "string" ? e.origin : "";
+      if (!src.includes("beehiiv.com")) return;
+      const data: any = e.data;
+      const asString = typeof data === "string" ? data : JSON.stringify(data ?? "");
+      if (/subscribe|success|submitted/i.test(asString)) markSubmitted();
+    };
+    window.addEventListener("message", onMessage);
+
+    return () => {
+      container.removeEventListener("submit", onSubmit, true);
+      window.removeEventListener("message", onMessage);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className={className}
+      style={{ maxWidth, width: "100%", marginLeft: "auto", marginRight: "auto", ...style }}
+    />
+  );
+};

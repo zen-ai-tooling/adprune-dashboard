@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { CheckCircle2, Download, ArrowRight } from 'lucide-react';
+import { EmailCaptureForm } from './EmailCaptureForm';
 
 export interface CompletionSummaryItem {
   label: string;

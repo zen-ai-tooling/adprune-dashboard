@@ -128,7 +128,11 @@ export const RowDetailPanel: React.FC<RowDetailPanelProps> = ({
     } else {
       document.body.classList.add('row-panel-open');
     }
-    return () => { document.body.classList.remove('row-panel-open'); };
+    document.body.dataset.rowDetailOpen = 'true';
+    return () => {
+      document.body.classList.remove('row-panel-open');
+      delete document.body.dataset.rowDetailOpen;
+    };
   }, [open, isNarrow]);
 
   // Brief "Decision saved" confirmation state.

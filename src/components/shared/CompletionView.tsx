@@ -170,14 +170,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
           </div>
 
           {/* Beehiiv newsletter embed — early access for live account sync */}
-          <div
-            ref={beehiivContainerRef}
-            className="mx-auto"
-            style={{
-              maxWidth: 400,
-              marginTop: 24,
-            }}
-          />
+          <EmailCaptureForm maxWidth={400} style={{ marginTop: 24 }} />
 
 
 

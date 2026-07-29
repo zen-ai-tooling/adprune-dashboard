@@ -339,7 +339,7 @@ const Landing: React.FC = () => {
               width={1492}
               height={839}
               loading="eager"
-              fetchpriority="high"
+              fetchPriority="high"
               style={{
                 width: "100%",
                 height: "auto",

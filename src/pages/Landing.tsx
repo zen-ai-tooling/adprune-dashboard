@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import landingHero from "@/assets/landing-screenshot-minimal-blur.png.asset.json";
+
 
 const useReveal = () => {
   const ref = useRef<HTMLDivElement>(null);

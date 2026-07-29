@@ -1314,6 +1314,8 @@ const Index = () => {
       />
 
       <HelpDrawer open={showHelpDrawer} onClose={() => setShowHelpDrawer(false)} />
+
+      <ExitIntentModal isSuppressed={() => document.body.dataset.rowDetailOpen === 'true'} />
     </div>
   );
 };

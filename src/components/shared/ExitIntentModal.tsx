@@ -129,10 +129,10 @@ export const ExitIntentModal: React.FC<ExitIntentModalProps> = ({ isSuppressed }
           id="exit-intent-headline"
           style={{ fontSize: 18, fontWeight: 700, color: "#1D1D1F", marginTop: 8 }}
         >
-          Get notified when new features launch
+          Get early access to live Amazon Sync
         </h2>
         <p style={{ fontSize: 14, color: "#6B7280", marginTop: 8, marginBottom: 20 }}>
-          We're adding live account sync and more — want to hear when it's ready?
+          No more manual file uploads — automatic account syncing is coming. Early sign-ups will get 3 months free at launch.
         </p>
 
         <EmailCaptureForm maxWidth={420} />

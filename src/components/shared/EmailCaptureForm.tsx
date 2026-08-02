@@ -20,9 +20,20 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
   style,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = React.useState(false);
+  const [hasChild, setHasChild] = React.useState(false);
+  const [minElapsed, setMinElapsed] = React.useState(false);
 
   React.useEffect(() => {
+    const mountTime = Date.now();
+    const minDuration = 600;
+    let minTimer: number | undefined;
+    const elapsed = Date.now() - mountTime;
+    if (elapsed >= minDuration) {
+      setMinElapsed(true);
+    } else {
+      minTimer = window.setTimeout(() => setMinElapsed(true), minDuration - elapsed);
+    }
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -32,7 +43,7 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
     if (formHost) {
       const check = () => {
         if (formHost.querySelector("iframe, form")) {
-          setLoaded(true);
+          setHasChild(true);
           observer?.disconnect();
           return true;
         }
@@ -41,7 +52,7 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
       if (!check()) {
         observer = new MutationObserver(check);
         observer.observe(formHost, { childList: true, subtree: true });
-        fallback = window.setTimeout(() => setLoaded(true), 3000);
+        fallback = window.setTimeout(() => setHasChild(true), 3000);
       }
     }
 
@@ -74,12 +85,15 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
     window.addEventListener("message", onMessage);
 
     return () => {
+      if (minTimer) window.clearTimeout(minTimer);
       observer?.disconnect();
       if (fallback) window.clearTimeout(fallback);
       container.removeEventListener("submit", onSubmit, true);
       window.removeEventListener("message", onMessage);
     };
   }, []);
+
+  const loaded = hasChild && minElapsed;
 
   return (
     <div

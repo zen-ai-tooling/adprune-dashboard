@@ -229,7 +229,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
             animation: 'cv-fade-in 300ms ease-out 600ms both',
           }}
         >
-          {/* LEFT — Session summary */}
+          {/* LEFT — This session at a glance */}
           <div
             style={{
               background: '#FFFFFF',
@@ -248,7 +248,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
                 marginBottom: 18,
               }}
             >
-              Session summary
+              This session at a glance
             </h3>
 
             <div className="grid grid-cols-2" style={{ gap: '14px 24px' }}>
@@ -435,6 +435,57 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Beehiiv newsletter embed — early access for new features */}
+        <div
+          className="mx-auto w-full"
+          style={{ maxWidth: 440, marginTop: 32, marginBottom: 24 }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: 12,
+              padding: '24px 28px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                color: '#6B7280',
+                textAlign: 'center',
+              }}
+            >
+              STAY UPDATED
+            </p>
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: '#1D1D1F',
+                textAlign: 'center',
+                marginTop: 6,
+              }}
+            >
+              Get early access to new features
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: '#9CA3AF',
+                textAlign: 'center',
+                marginTop: 6,
+                marginBottom: 16,
+              }}
+            >
+              We're always improving AdPrune — leave your email and we'll let you know what's next.
+            </p>
+            <EmailCaptureForm maxWidth={400} />
           </div>
         </div>
       </div>

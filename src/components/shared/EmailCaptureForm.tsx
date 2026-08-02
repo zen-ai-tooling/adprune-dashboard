@@ -45,12 +45,12 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
       }
     }
 
-    if (!container.querySelector("script[data-beehiiv-form]")) {
+    if (formHost && !formHost.querySelector("script[data-beehiiv-form]")) {
       const script = document.createElement("script");
       script.async = true;
       script.src = "https://subscribe-forms.beehiiv.com/v3/loader.js";
       script.setAttribute("data-beehiiv-form", BEEHIIV_FORM_ID);
-      container.appendChild(script);
+      formHost.appendChild(script);
     }
 
     const markSubmitted = () => {
@@ -74,6 +74,8 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
     window.addEventListener("message", onMessage);
 
     return () => {
+      observer?.disconnect();
+      if (fallback) window.clearTimeout(fallback);
       container.removeEventListener("submit", onSubmit, true);
       window.removeEventListener("message", onMessage);
     };
@@ -84,6 +86,28 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
       ref={containerRef}
       className={className}
       style={{ maxWidth, width: "100%", marginLeft: "auto", marginRight: "auto", ...style }}
-    />
+    >
+      {!loaded && (
+        <div
+          aria-hidden
+          style={{
+            height: 44,
+            width: "100%",
+            background: "#F3F4F6",
+            borderRadius: 10,
+          }}
+        />
+      )}
+      <div
+        data-beehiiv-host
+        style={{
+          opacity: loaded ? 1 : 0,
+          height: loaded ? "auto" : 0,
+          overflow: loaded ? "visible" : "hidden",
+          transition: "opacity 150ms ease",
+        }}
+      />
+    </div>
   );
 };
+

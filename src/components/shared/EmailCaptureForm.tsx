@@ -85,8 +85,17 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
     <div
       ref={containerRef}
       className={className}
+      data-email-capture
       style={{ maxWidth, width: "100%", marginLeft: "auto", marginRight: "auto", ...style }}
     >
+      <style>{`
+        [data-email-capture] input[type="email"],
+        [data-email-capture] input[type="text"] {
+          background: #FFFFFF !important;
+          border: 1px solid #E5E5EA !important;
+          border-radius: 10px !important;
+        }
+      `}</style>
       {!loaded && (
         <div
           aria-hidden

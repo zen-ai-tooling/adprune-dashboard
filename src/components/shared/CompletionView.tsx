@@ -185,39 +185,8 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
             {truncate(fileName, 40)}
           </p>
 
-          {showRecap && (
-            <div
-              className="mt-6 mx-auto rounded-xl p-4 animate-fade-in text-left"
-              style={{
-                background: '#F9FAFB',
-                border: '1px solid #E5E7EB',
-                maxWidth: 420,
-              }}
-            >
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wide mb-3"
-                style={{ color: '#9CA3AF' }}
-              >
-                Session summary
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: 'Paused', value: pausedCount, color: '#EF4444' },
-                  { label: 'Negated', value: negativesCount, color: '#6366F1' },
-                  { label: 'Bid cut', value: cutBidCount, color: '#F59E0B' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="text-center">
-                    <div className="text-[22px] font-bold tabular-nums" style={{ color }}>
-                      {value}
-                    </div>
-                    <div className="text-[11px] mt-0.5" style={{ color: '#9CA3AF' }}>
-                      {label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+
+
         </div>
 
         {/* ── Two-column layout ── */}
@@ -233,7 +202,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
           <div
             style={{
               background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
+              border: '1px solid #E5E5EA',
               borderRadius: 12,
               padding: 24,
             }}
@@ -248,7 +217,8 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
                 marginBottom: 18,
               }}
             >
-              This session at a glance
+              Session summary
+
             </h3>
 
             <div className="grid grid-cols-2" style={{ gap: '14px 24px' }}>
@@ -354,8 +324,9 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
           {/* RIGHT — What's next */}
           <div
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
+              background: '#F0F5FF',
+              border: '1px solid #E5E5EA',
+              borderLeft: '3px solid #0071E3',
               borderRadius: 12,
               padding: 24,
               display: 'flex',

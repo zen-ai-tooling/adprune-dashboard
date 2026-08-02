@@ -85,12 +85,15 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
     window.addEventListener("message", onMessage);
 
     return () => {
+      if (minTimer) window.clearTimeout(minTimer);
       observer?.disconnect();
       if (fallback) window.clearTimeout(fallback);
       container.removeEventListener("submit", onSubmit, true);
       window.removeEventListener("message", onMessage);
     };
   }, []);
+
+  const loaded = hasChild && minElapsed;
 
   return (
     <div

@@ -20,10 +20,30 @@ export const EmailCaptureForm: React.FC<EmailCaptureFormProps> = ({
   style,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    const formHost = container.querySelector<HTMLDivElement>("[data-beehiiv-host]");
+    let observer: MutationObserver | undefined;
+    let fallback: number | undefined;
+    if (formHost) {
+      const check = () => {
+        if (formHost.querySelector("iframe, form")) {
+          setLoaded(true);
+          observer?.disconnect();
+          return true;
+        }
+        return false;
+      };
+      if (!check()) {
+        observer = new MutationObserver(check);
+        observer.observe(formHost, { childList: true, subtree: true });
+        fallback = window.setTimeout(() => setLoaded(true), 3000);
+      }
+    }
 
     if (!container.querySelector("script[data-beehiiv-form]")) {
       const script = document.createElement("script");

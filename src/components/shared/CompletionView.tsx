@@ -373,7 +373,7 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
 
             <p
               className="inline-flex items-center flex-wrap"
-              style={{ fontSize: 12, color: '#374151', marginTop: 14, gap: 6 }}
+              style={{ fontSize: 12, color: '#6B7280', marginTop: 14, gap: 6, cursor: 'default', textDecoration: 'none' }}
             >
               <span>Amazon Ads</span>
               <span style={{ color: '#D1D5DB' }}>›</span>
@@ -412,14 +412,14 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
         {/* Beehiiv newsletter embed — early access for new features */}
         <div
           className="mx-auto w-full"
-          style={{ maxWidth: 440, marginTop: 32, marginBottom: 24 }}
+          style={{ maxWidth: 440, marginTop: 32, marginBottom: 40 }}
         >
           <div
             style={{
               background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
+              border: '1px solid #E5E5EA',
               borderRadius: 12,
-              padding: '24px 28px',
+              padding: 24,
             }}
           >
             <p

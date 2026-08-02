@@ -44,20 +44,6 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
   impactSubtitle,
   totalRows,
 }) => {
-  const [showRecap, setShowRecap] = React.useState(false);
-  React.useEffect(() => {
-    const t = setTimeout(() => setShowRecap(true), 400);
-    return () => clearTimeout(t);
-  }, []);
-
-
-
-
-  const findCount = (re: RegExp) =>
-    breakdown.filter((b) => re.test(b.label)).reduce((s, b) => s + b.count, 0);
-  const pausedCount = findCount(/^paused?$/i);
-  const negativesCount = findCount(/negat/i);
-  const cutBidCount = findCount(/cut\s*bid/i);
   const decidedTotal = breakdown
     .filter((b) => !/no decision|undecided/i.test(b.label))
     .reduce((s, b) => s + b.count, 0);

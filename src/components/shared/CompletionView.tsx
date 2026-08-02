@@ -169,44 +169,6 @@ export const CompletionView: React.FC<CompletionViewProps> = ({
             )}
           </div>
 
-          {/* Beehiiv newsletter embed — early access for live account sync */}
-          <div style={{ maxWidth: 400, margin: '24px auto 0' }}>
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-                color: '#6B7280',
-                textAlign: 'center',
-              }}
-            >
-              KEEP A COPY
-            </p>
-            <p
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: '#1D1D1F',
-                textAlign: 'center',
-                marginTop: 6,
-              }}
-            >
-              Get updates on your sessions
-            </p>
-            <p
-              style={{
-                fontSize: 13,
-                color: '#9CA3AF',
-                textAlign: 'center',
-                marginTop: 6,
-                marginBottom: 16,
-              }}
-            >
-              We're adding session history and live account sync — get notified when they're ready.
-            </p>
-            <EmailCaptureForm maxWidth={400} />
-          </div>
 
 
 

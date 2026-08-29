@@ -118,7 +118,7 @@ export const SearchTermHarvesting: React.FC = () => {
   const AUTO_NEGATE_KEY = "adprune-harvest-auto-negate";
   const [autoNegate, setAutoNegate] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("adprune-harvest-auto-negate") === "1";
+      return localStorage.getItem(AUTO_NEGATE_KEY) === "1";
     } catch {
       return false;
     }
@@ -126,7 +126,7 @@ export const SearchTermHarvesting: React.FC = () => {
   const toggleAutoNegate = (v: boolean) => {
     setAutoNegate(v);
     try {
-      localStorage.setItem("adprune-harvest-auto-negate", v ? "1" : "0");
+      localStorage.setItem(AUTO_NEGATE_KEY, v ? "1" : "0");
     } catch {
       // storage disabled — ignore
     }
@@ -581,10 +581,9 @@ export const SearchTermHarvesting: React.FC = () => {
           <div className="flex flex-col max-w-[260px]">
             <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5 inline-flex items-center gap-1">
               Auto-negate source keywords
-              <Info
-                className="w-3 h-3 text-[#9CA3AF] cursor-help flex-shrink-0"
-                strokeWidth={2}
-                aria-label="About auto-negate"
+<button
+                type="button"
+                aria-label="About auto-negate source keywords"
                 onClick={(e) => {
                   e.preventDefault();
                   toast({
@@ -593,7 +592,10 @@ export const SearchTermHarvesting: React.FC = () => {
                       "Harvesting without negating can mean your original broad/phrase keyword still matches the same search — sometimes winning the internal match instead of your new, more precise keyword. Negating prevents that, but can briefly reduce traffic if the new keyword hasn't built up performance yet. We default this off so proven keywords aren't cut immediately.",
                   });
                 }}
-              />
+                className="inline-flex items-center justify-center rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-1"
+              >
+                <Info className="w-3 h-3 text-[#9CA3AF] flex-shrink-0" strokeWidth={2} />
+              </button>
             </label>
             <button
               type="button"

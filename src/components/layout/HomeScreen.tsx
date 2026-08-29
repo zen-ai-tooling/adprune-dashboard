@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useHistory } from "@/context/HistoryContext";
+import { track } from "@/lib/analytics";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 type ActiveModule = "bleeders_1" | "bleeders_2" | "lifetime_bleeders" | "search_harvest" | null;
@@ -184,7 +185,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onSelectModule }) => {
             return (
               <button
                 key={m.id}
-                onClick={() => onSelectModule(m.id)}
+                onClick={() => { track("module_selected", { module: m.id }); onSelectModule(m.id); }}
                 className="group text-left rounded-xl border p-6 relative overflow-hidden flex flex-col workflow-card"
                 style={{
                   minHeight: "180px",

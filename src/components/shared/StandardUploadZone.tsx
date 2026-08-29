@@ -1,6 +1,10 @@
 import * as React from 'react';
 import { Upload, CheckCircle2, Circle, X, FileSpreadsheet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { track } from '@/lib/analytics';
+
+const trackUpload = (f: File) =>
+  track('file_uploaded', { sizeKb: Math.round(f.size / 1024), ext: f.name.split('.').pop()?.toLowerCase() ?? '' });
 
 interface StandardUploadZoneProps {
   onFileSelect: (file: File) => void;
@@ -38,12 +42,12 @@ export const StandardUploadZone: React.FC<StandardUploadZoneProps> = ({
     e.preventDefault();
     setIsDragging(false);
     const f = e.dataTransfer.files?.[0];
-    if (f) onFileSelect(f);
+    if (f) { onFileSelect(f); trackUpload(f); }
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) onFileSelect(f);
+    if (f) { onFileSelect(f); trackUpload(f); }
   };
 
   if (selectedFile) {

@@ -202,6 +202,8 @@ export interface BulkExportInput {
   maxBid?: number;
   dateRangeLabel?: string; // e.g. "60d"
   bulkIdIndex?: BulkIdIndex;
+  /** When false, no negative rows are generated — only the new exact-match targets. */
+  autoNegate?: boolean;
 }
 
 interface BuiltRow {
@@ -243,6 +245,7 @@ export const buildHarvestBulkWorkbook = ({
   defaultBid,
   maxBid,
   bulkIdIndex,
+  autoNegate = true,
 }: BulkExportInput): { workbook: XLSX.WorkBook; summary: HarvestExportSummary; warnings: string[] } => {
   const warnings: string[] = [];
   const bidCap = Number.isFinite(maxBid) && (maxBid as number) > 0 ? (maxBid as number) : defaultBid * 3;
@@ -333,7 +336,8 @@ export const buildHarvestBulkWorkbook = ({
 
   let exactRows = built.length;
 
-  for (const r of negWinners.values()) {
+  // Auto-negate OFF → skip negative row generation entirely; source keywords stay active.
+  for (const r of autoNegate ? negWinners.values() : []) {
     // Don't create negatives for terms that already came from Exact match —
     // a negative exact would disable the existing positive exact keyword in the same ad group.
     if (r.matchType.trim().toLowerCase() === "exact") {

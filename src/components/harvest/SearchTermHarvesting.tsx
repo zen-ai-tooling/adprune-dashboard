@@ -115,6 +115,22 @@ export const SearchTermHarvesting: React.FC = () => {
   const [maxAcos, setMaxAcos] = useState<number>(35);
   const [defaultBid, setDefaultBid] = useState<number>(0.75);
   const [maxBid, setMaxBid] = useState<number>(2.25);
+  const AUTO_NEGATE_KEY = "adprune-harvest-auto-negate";
+  const [autoNegate, setAutoNegate] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("adprune-harvest-auto-negate") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleAutoNegate = (v: boolean) => {
+    setAutoNegate(v);
+    try {
+      localStorage.setItem("adprune-harvest-auto-negate", v ? "1" : "0");
+    } catch {
+      // storage disabled — ignore
+    }
+  };
   const [query, setQuery] = useState("");
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");
@@ -265,7 +281,9 @@ export const SearchTermHarvesting: React.FC = () => {
       const r = state.rows.find((x) => x.id === id);
       return r && !r.adGroupName.trim();
     }).length;
-    let desc = "Exact target + negative exact queued.";
+    let desc = autoNegate
+      ? "Exact target + negative exact queued."
+      : "Exact target queued — source stays active (auto-negate off).";
     if (emptyAdGroup > 0) {
       desc += ` (${emptyAdGroup} row(s) have no Ad Group — negatives will be campaign-wide)`;
     }
@@ -295,6 +313,7 @@ export const SearchTermHarvesting: React.FC = () => {
       defaultBid,
       maxBid,
       bulkIdIndex: bulkIdIndex ?? undefined,
+      autoNegate,
     });
     const stamp = new Date().toISOString().slice(0, 10);
     const fileName = `Harvest_Bulk_60d_${stamp}.xlsx`;
@@ -559,6 +578,44 @@ export const SearchTermHarvesting: React.FC = () => {
             />
           </div>
 
+          <div className="flex flex-col max-w-[260px]">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5 inline-flex items-center gap-1">
+              Auto-negate source keywords
+              <Info
+                className="w-3 h-3 text-[#9CA3AF] cursor-help flex-shrink-0"
+                strokeWidth={2}
+                aria-label="About auto-negate"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toast({
+                    title: "Auto-negate source keywords",
+                    description:
+                      "Harvesting without negating can mean your original broad/phrase keyword still matches the same search — sometimes winning the internal match instead of your new, more precise keyword. Negating prevents that, but can briefly reduce traffic if the new keyword hasn't built up performance yet. We default this off so proven keywords aren't cut immediately.",
+                  });
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoNegate}
+              title="Harvesting without negating can mean your original broad/phrase keyword still matches the same search — sometimes winning the internal match instead of your new, more precise keyword. Negating prevents that, but can briefly reduce traffic if the new keyword hasn't built up performance yet. We default this off so proven keywords aren't cut immediately."
+              onClick={() => toggleAutoNegate(!autoNegate)}
+              className="relative h-9 w-12 rounded-full transition-colors btn-press flex-shrink-0"
+              style={{ background: autoNegate ? "#10B981" : "#E5E7EB" }}
+            >
+              <span
+                className="absolute top-1 h-7 w-7 rounded-full bg-white shadow transition-all"
+                style={{ left: autoNegate ? "calc(100% - 32px)" : "4px" }}
+              />
+            </button>
+            <span className="text-[11px] text-[#9CA3AF] mt-1 leading-snug">
+              {autoNegate
+                ? "On — standard PPC practice. The source keyword is blocked from matching the exact term you just harvested, so it can't compete with your new target."
+                : "Off — harvested keywords are added without touching the source. Your existing keyword keeps its performance history intact."}
+            </span>
+          </div>
+
           <div className="flex flex-col flex-1 min-w-[200px]">
             <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#6B7280] mb-1.5">
               Search
@@ -803,6 +860,23 @@ export const SearchTermHarvesting: React.FC = () => {
                             title="Only the exact keyword will be created — no negative needed since the source is already exact match."
                           >
                             Already Exact
+                          </span>
+                        )}
+                        {!(r.matchType.toLowerCase() === "exact") && (
+                          <span
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
+                            style={
+                              autoNegate
+                                ? { background: "#F3E8FF", color: "#6B21A8" }
+                                : { background: "#F3F4F6", color: "#6B7280" }
+                            }
+                            title={
+                              autoNegate
+                                ? "A negative exact will be created in the source so it can't compete with the new target."
+                                : "Auto-negate is off — no negative will be created; the source keyword stays active."
+                            }
+                          >
+                            {autoNegate ? "Source will be negated" : "Source stays active"}
                           </span>
                         )}
                       </div>

@@ -210,7 +210,7 @@ export const SmartDropzone: React.FC<SmartDropzoneProps> = ({
         type="file"
         accept={accept}
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelect(f); }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) { onFileSelect(f); trackUpload(f); } }}
       />
       <Upload
         style={{

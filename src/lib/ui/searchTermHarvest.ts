@@ -245,6 +245,7 @@ export const buildHarvestBulkWorkbook = ({
   defaultBid,
   maxBid,
   bulkIdIndex,
+  autoNegate = true,
 }: BulkExportInput): { workbook: XLSX.WorkBook; summary: HarvestExportSummary; warnings: string[] } => {
   const warnings: string[] = [];
   const bidCap = Number.isFinite(maxBid) && (maxBid as number) > 0 ? (maxBid as number) : defaultBid * 3;

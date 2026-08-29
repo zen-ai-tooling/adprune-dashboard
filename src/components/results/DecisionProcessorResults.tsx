@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, Download, AlertCircle, ArrowRight, Ban, Pause, FileText, Package, ChevronDown, RefreshCw } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { track } from "@/lib/analytics";
 
 interface DecisionProcessorResultsProps {
   fileName: string;
@@ -51,6 +52,7 @@ export const DecisionProcessorResults: React.FC<DecisionProcessorResultsProps> =
   const [showAutoRepairs, setShowAutoRepairs] = React.useState(false);
   
   const handleDownload = () => {
+    track("decisions_made", { module: "bleeders_1", decisionCount: summary.pausedCount + summary.negativesCreated + summary.negativeProductTargets });
     const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
@@ -61,6 +63,7 @@ export const DecisionProcessorResults: React.FC<DecisionProcessorResultsProps> =
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    track("file_downloaded", { module: "bleeders_1", rowCount: preFlight.actionableRows });
   };
   
   const scrollToValidator = () => {

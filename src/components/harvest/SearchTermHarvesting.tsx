@@ -22,11 +22,10 @@ import {
   parseReferenceBulkFile,
   buildHarvestBulkWorkbook,
   downloadWorkbook,
-} from "@/lib/ui/searchTermHarvest";
-import { track } from "@/lib/analytics";
   type HarvestRow,
   type HarvestExportSummary,
 } from "@/lib/ui/searchTermHarvest";
+import { track } from "@/lib/analytics";
 import type { BulkIdIndex } from "@/lib/amazonBulkIdIndex";
 import { checkFileSize } from "@/lib/fileSizeGuard";
 

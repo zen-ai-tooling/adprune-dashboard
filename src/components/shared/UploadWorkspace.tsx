@@ -11,6 +11,10 @@
 
 import * as React from 'react';
 import { Upload, FileSpreadsheet, X, Check } from 'lucide-react';
+import { track } from '@/lib/analytics';
+
+const trackUpload = (f: File) =>
+  track('file_uploaded', { sizeKb: Math.round(f.size / 1024), ext: f.name.split('.').pop()?.toLowerCase() ?? '' });
 
 export interface PipelineStep {
   id: number;
@@ -181,7 +185,7 @@ export const SmartDropzone: React.FC<SmartDropzoneProps> = ({
         e.preventDefault();
         setIsDragging(false);
         const f = e.dataTransfer.files?.[0];
-        if (f) onFileSelect(f);
+        if (f) { onFileSelect(f); trackUpload(f); }
       }}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
@@ -206,7 +210,7 @@ export const SmartDropzone: React.FC<SmartDropzoneProps> = ({
         type="file"
         accept={accept}
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelect(f); }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) { onFileSelect(f); trackUpload(f); } }}
       />
       <Upload
         style={{

@@ -25,6 +25,7 @@ import {
   type HarvestRow,
   type HarvestExportSummary,
 } from "@/lib/ui/searchTermHarvest";
+import { track } from "@/lib/analytics";
 import type { BulkIdIndex } from "@/lib/amazonBulkIdIndex";
 import { checkFileSize } from "@/lib/fileSizeGuard";
 
@@ -308,6 +309,7 @@ export const SearchTermHarvesting: React.FC = () => {
       });
       return;
     }
+    track("decisions_made", { module: "search_harvest", decisionCount: harvested.length });
     const { workbook, summary, warnings } = buildHarvestBulkWorkbook({
       rows: harvested,
       defaultBid,
@@ -319,6 +321,7 @@ export const SearchTermHarvesting: React.FC = () => {
     const fileName = `Harvest_Bulk_60d_${stamp}.xlsx`;
     const doDownload = () => downloadWorkbook(workbook, fileName);
     doDownload();
+    track("file_downloaded", { module: "search_harvest", rowCount: harvested.length });
     warnings.forEach((w) =>
       toast({ title: "Heads up", description: w, variant: w.includes("not found") ? "destructive" : undefined }),
     );

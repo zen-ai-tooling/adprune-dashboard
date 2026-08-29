@@ -17,6 +17,7 @@ import { SortHeader, useSortable } from "@/components/shared/SortHeader";
 import { CompletionView } from "@/components/shared/CompletionView";
 import { DecisionProgressBar } from "@/components/shared/DecisionProgressBar";
 import { SpendDistributionStrip } from "@/components/shared/SpendDistributionStrip";
+import { track } from "@/lib/analytics";
 import { RowDetailPanel, type DecisionButtonSpec, type RowDetail } from "@/components/shared/RowDetailPanel";
 
 interface Bleeder2TrackResultsProps {
@@ -230,6 +231,7 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
   const handleGenerateInline = async () => {
     setIsGenerating(true);
     setGenerateDone(false);
+    track("decisions_made", { module: "bleeders_2", decisionCount: decisionsMade });
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
@@ -385,7 +387,7 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
           { label: 'Keep', count: breakdownCounts['Keep'] ?? 0, color: '#059669' },
           { label: 'No decision', count: Math.max(0, result.bleeders.length - decisionsMade), color: '#D1D5DB' },
         ]}
-        onDownload={onDownloadAmazon}
+        onDownload={() => { onDownloadAmazon?.(); track("file_downloaded", { module: "bleeders_2", rowCount: decisionsMade }); }}
         onStartNew={() => {
           clearSession(sessionModule, sessionFileRef.current);
           setSavedSession(null);
@@ -840,7 +842,7 @@ export const Bleeder2TrackResults: React.FC<Bleeder2TrackResultsProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button variant="outline" size="sm" onClick={onDownload} className="text-[11px] h-9 btn-press">
+              <Button variant="outline" size="sm" onClick={() => { onDownload(); track("file_downloaded", { module: "bleeders_2", rowCount: decisionsMade }); }} className="text-[11px] h-9 btn-press">
                 <Download className="w-3 h-3 mr-1" />
                 Download XLSX
               </Button>

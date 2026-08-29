@@ -115,6 +115,22 @@ export const SearchTermHarvesting: React.FC = () => {
   const [maxAcos, setMaxAcos] = useState<number>(35);
   const [defaultBid, setDefaultBid] = useState<number>(0.75);
   const [maxBid, setMaxBid] = useState<number>(2.25);
+  const AUTO_NEGATE_KEY = "adprune-harvest-auto-negate";
+  const [autoNegate, setAutoNegate] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("adprune-harvest-auto-negate") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleAutoNegate = (v: boolean) => {
+    setAutoNegate(v);
+    try {
+      localStorage.setItem("adprune-harvest-auto-negate", v ? "1" : "0");
+    } catch {
+      // storage disabled — ignore
+    }
+  };
   const [query, setQuery] = useState("");
   const [bulkIdIndex, setBulkIdIndex] = useState<BulkIdIndex | null>(null);
   const [bulkFileName, setBulkFileName] = useState<string>("");

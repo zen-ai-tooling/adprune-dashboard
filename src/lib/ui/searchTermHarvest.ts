@@ -336,7 +336,8 @@ export const buildHarvestBulkWorkbook = ({
 
   let exactRows = built.length;
 
-  for (const r of negWinners.values()) {
+  // Auto-negate OFF → skip negative row generation entirely; source keywords stay active.
+  for (const r of autoNegate ? negWinners.values() : []) {
     // Don't create negatives for terms that already came from Exact match —
     // a negative exact would disable the existing positive exact keyword in the same ad group.
     if (r.matchType.trim().toLowerCase() === "exact") {

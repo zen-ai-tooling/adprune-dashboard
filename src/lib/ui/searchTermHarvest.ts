@@ -202,6 +202,8 @@ export interface BulkExportInput {
   maxBid?: number;
   dateRangeLabel?: string; // e.g. "60d"
   bulkIdIndex?: BulkIdIndex;
+  /** When false, no negative rows are generated — only the new exact-match targets. */
+  autoNegate?: boolean;
 }
 
 interface BuiltRow {

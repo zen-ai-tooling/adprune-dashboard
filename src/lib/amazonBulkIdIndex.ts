@@ -203,6 +203,18 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
       // Track campaign names per product
       campaignNamesByProduct[product].add(campaignName);
 
+      // Track ad groups per campaign (original display names, normalized campaign key)
+      if (adGroupName) {
+        const agKey = `${product}|${normalizeText(campaignName)}`;
+        let agMap = adGroupsByCampaign.get(agKey);
+        if (!agMap) {
+          agMap = new Map<string, string>();
+          adGroupsByCampaign.set(agKey, agMap);
+        }
+        const existingId = agMap.get(adGroupName);
+        if (!existingId) agMap.set(adGroupName, adGroupId || "");
+      }
+
       // Index campaign
       const campaignKey = `${product}|${normalizeText(campaignName)}`;
       if (!campaignIndex.has(campaignKey) && campaignId) {

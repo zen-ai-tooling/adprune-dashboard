@@ -500,7 +500,9 @@ export const SearchTermHarvesting: React.FC = () => {
               2. (Optional) Drop 30-day Bulk Operations export
             </p>
             <p className="text-[11.5px] text-[#9CA3AF] mt-1">
-              {bulkFileName ? `✓ ${bulkFileName}` : "Resolves Campaign IDs & Ad Group IDs for direct upload."}
+              {bulkFileName
+                  ? `✓ ${bulkFileName}`
+                  : "Attach your Amazon bulk file so harvested keywords can be routed to a real campaign and ad group."}
             </p>
             <input
               ref={bulkInputRef}
@@ -915,9 +917,9 @@ export const SearchTermHarvesting: React.FC = () => {
                       {r.harvested ? (
                         <span
                           className="block text-[12px] font-mono-nums text-[#374151] truncate"
-                          title={`${r.destinationCampaign} \u203A ${r.destinationAdGroup}`}
+                          title={`${r.destinationCampaign} › ${r.destinationAdGroup}`}
                         >
-                          {r.destinationCampaign} \u203A {r.destinationAdGroup}
+                          {r.destinationCampaign} › {r.destinationAdGroup}
                         </span>
                       ) : (
                         <div className="flex flex-col gap-1">

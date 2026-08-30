@@ -31,6 +31,7 @@ export interface HarvestRow extends RawSearchTermRow {
   termKind: "ASIN" | "KEYWORD";
   lengthWarning: boolean;
   destinationCampaign: string;
+  destinationAdGroup: string;
   dismissed: boolean;
   harvested: boolean;
 }
@@ -49,13 +50,6 @@ export const exceedsLength = (s: string): boolean => {
   if (trimmed.length > 80) return true;
   const words = trimmed.split(/\s+/).filter(Boolean);
   return words.length > 10;
-};
-
-export const guessDestinationCampaign = (source: string): string => {
-  if (!source) return "";
-  const replaced = source.replace(/([-_ ])(Auto|Broad|Phrase|Discovery|Research)([-_ ]|$)/i, "$1Exact$3");
-  if (replaced !== source) return replaced;
-  return `${source}_Exact_Harvest`;
 };
 
 // ── Parsing ──
@@ -170,7 +164,8 @@ export const parseSearchTermReport = async (file: File): Promise<ParseResult> =>
       cleanedTerm: cleaned,
       termKind,
       lengthWarning: exceedsLength(cleaned),
-      destinationCampaign: guessDestinationCampaign(campaign),
+      destinationCampaign: "",
+      destinationAdGroup: "",
       dismissed: false,
       harvested: false,
     });
@@ -250,9 +245,9 @@ export const buildHarvestBulkWorkbook = ({
   const warnings: string[] = [];
   const bidCap = Number.isFinite(maxBid) && (maxBid as number) > 0 ? (maxBid as number) : defaultBid * 3;
 
-  // 1. Dedup exact-keyword creations by (cleanedTerm + destinationCampaign + adGroupName).
+  // 1. Dedup exact-keyword creations by (cleanedTerm + destinationCampaign + destinationAdGroup).
   //    Keep highest-sales winner.
-  const exactKey = (r: HarvestRow) => `${r.cleanedTerm}||${r.destinationCampaign}||${r.adGroupName}`;
+  const exactKey = (r: HarvestRow) => `${r.cleanedTerm}||${r.destinationCampaign}||${r.destinationAdGroup}`;
   const exactWinners = new Map<string, HarvestRow>();
   let dupsRemoved = 0;
   for (const r of rows) {
@@ -285,11 +280,20 @@ export const buildHarvestBulkWorkbook = ({
   const campaignsAffected = new Set<string>();
 
   for (const r of exactWinners.values()) {
+    if (!r.destinationCampaign.trim() || !r.destinationAdGroup.trim()) {
+      warnings.push(`Skipped "${r.cleanedTerm}" — no destination campaign and ad group selected.`);
+      destinationsMissing++;
+      continue;
+    }
     const rawBid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
     const bid = Math.min(rawBid, bidCap);
     if (rawBid > bidCap) bidsCapped++;
     const destMatch = bulkIdIndex?.findCampaign("SP", r.destinationCampaign);
     if (bulkIdIndex && !destMatch) destinationsMissing++;
+    const destAdGroupId =
+      bulkIdIndex
+        ?.listAdGroups("SP", r.destinationCampaign)
+        .find((ag) => ag.name === r.destinationAdGroup)?.id ?? "";
     campaignsAffected.add(r.destinationCampaign);
 
     if (r.termKind === "KEYWORD") {
@@ -299,10 +303,8 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: destMatch?.campaignId ?? "",
         campaignName: r.destinationCampaign,
-        // For destination Create rows, leave adGroupId empty — Amazon resolves by name.
-        // destMatch.adGroupId may belong to a different ad group than r.adGroupName.
-        adGroupId: "",
-        adGroupName: r.adGroupName,
+        adGroupId: destAdGroupId,
+        adGroupName: r.destinationAdGroup,
         keywordText: r.cleanedTerm,
         targetingText: "",
         matchType: "Exact",
@@ -318,8 +320,8 @@ export const buildHarvestBulkWorkbook = ({
         operation: "Create",
         campaignId: destMatch?.campaignId ?? "",
         campaignName: r.destinationCampaign,
-        adGroupId: "",
-        adGroupName: r.adGroupName,
+        adGroupId: destAdGroupId,
+        adGroupName: r.destinationAdGroup,
         keywordText: "",
         targetingText: expr,
         matchType: "",
@@ -331,7 +333,7 @@ export const buildHarvestBulkWorkbook = ({
   }
 
   if (bidsCapped > 0) {
-    warnings.push(`${bidsCapped} bid(s) capped at $${bidCap.toFixed(2)} (3× default bid).`);
+    warnings.push(`${bidsCapped} bid(s) capped at $${bidCap.toFixed(2)} (Max Bid).`);
   }
 
   let exactRows = built.length;

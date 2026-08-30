@@ -26,6 +26,7 @@ export interface BulkIdIndex {
     targetingText: string,
   ): BulkIdMatch | undefined;
   listCampaignNames(product: "SP" | "SB" | "SD"): string[];
+  listAdGroups(product: "SP" | "SB" | "SD", campaignName: string): { name: string; id: string }[];
 }
 
 const DEBUG_BULK_INDEX = false;
@@ -81,6 +82,8 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
   const campaignIndex = new Map<string, BulkIdMatch>();
   const keywordIndex = new Map<string, BulkIdMatch>();
   const targetingIndex = new Map<string, BulkIdMatch>();
+  // key: `${product}|${normalizeText(campaignName)}` → Map<original adGroupName, adGroupId>
+  const adGroupsByCampaign = new Map<string, Map<string, string>>();
   const campaignNamesByProduct: Record<"SP" | "SB" | "SD", Set<string>> = {
     SP: new Set(),
     SB: new Set(),
@@ -200,6 +203,18 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
       // Track campaign names per product
       campaignNamesByProduct[product].add(campaignName);
 
+      // Track ad groups per campaign (original display names, normalized campaign key)
+      if (adGroupName) {
+        const agKey = `${product}|${normalizeText(campaignName)}`;
+        let agMap = adGroupsByCampaign.get(agKey);
+        if (!agMap) {
+          agMap = new Map<string, string>();
+          adGroupsByCampaign.set(agKey, agMap);
+        }
+        const existingId = agMap.get(adGroupName);
+        if (!existingId) agMap.set(adGroupName, adGroupId || "");
+      }
+
       // Index campaign
       const campaignKey = `${product}|${normalizeText(campaignName)}`;
       if (!campaignIndex.has(campaignKey) && campaignId) {
@@ -287,6 +302,15 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
 
     listCampaignNames(product: "SP" | "SB" | "SD"): string[] {
       return Array.from(campaignNamesByProduct[product]).sort();
+    },
+
+    listAdGroups(product: "SP" | "SB" | "SD", campaignName: string): { name: string; id: string }[] {
+      const key = `${product}|${normalizeText(campaignName)}`;
+      const agMap = adGroupsByCampaign.get(key);
+      if (!agMap) return [];
+      return Array.from(agMap.entries())
+        .map(([name, id]) => ({ name, id }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
   };
 }

@@ -39,6 +39,7 @@ type Action =
   | { type: "rollback"; ids: string[] }
   | { type: "restore"; id: string }
   | { type: "set-destination"; id: string; value: string }
+  | { type: "set-destination-adgroup"; id: string; value: string }
   | { type: "reset" };
 
 interface State {
@@ -84,9 +85,17 @@ const reducer = (state: State, action: Action): State => {
         rows: state.rows.map((r) => (r.id === action.id ? { ...r, dismissed: false } : r)),
       };
     case "set-destination":
+      // Changing the campaign invalidates any previously chosen ad group.
       return {
         ...state,
-        rows: state.rows.map((r) => (r.id === action.id ? { ...r, destinationCampaign: action.value } : r)),
+        rows: state.rows.map((r) =>
+          r.id === action.id ? { ...r, destinationCampaign: action.value, destinationAdGroup: "" } : r,
+        ),
+      };
+    case "set-destination-adgroup":
+      return {
+        ...state,
+        rows: state.rows.map((r) => (r.id === action.id ? { ...r, destinationAdGroup: action.value } : r)),
       };
     case "reset":
       return { rows: [], selected: new Set(), fileName: "" };
@@ -267,12 +276,12 @@ export const SearchTermHarvesting: React.FC = () => {
     if (!ids.length) return;
     const invalid = ids.filter((id) => {
       const r = state.rows.find((x) => x.id === id);
-      return !r || !r.destinationCampaign.trim() || !r.cleanedTerm;
+      return !r || !r.destinationCampaign.trim() || !r.destinationAdGroup.trim() || !r.cleanedTerm;
     });
     if (invalid.length) {
       toast({
         title: "Harvest rolled back",
-        description: `${invalid.length} row(s) missing destination or term. No staging applied.`,
+        description: `${invalid.length} row(s) missing destination campaign, ad group, or term. No staging applied.`,
         variant: "destructive",
       });
       return;
@@ -300,11 +309,11 @@ export const SearchTermHarvesting: React.FC = () => {
       toast({ title: "Nothing to export", description: "Harvest some terms first", variant: "destructive" });
       return;
     }
-    const emptyDest = harvested.filter((r) => !r.destinationCampaign.trim());
+    const emptyDest = harvested.filter((r) => !r.destinationCampaign.trim() || !r.destinationAdGroup.trim());
     if (emptyDest.length) {
       toast({
         title: "Missing destinations",
-        description: `${emptyDest.length} harvested term(s) have no destination campaign. Fill them in before exporting.`,
+        description: `${emptyDest.length} staged row(s) need a destination campaign and ad group.`,
         variant: "destructive",
       });
       return;
@@ -491,7 +500,9 @@ export const SearchTermHarvesting: React.FC = () => {
               2. (Optional) Drop 30-day Bulk Operations export
             </p>
             <p className="text-[11.5px] text-[#9CA3AF] mt-1">
-              {bulkFileName ? `✓ ${bulkFileName}` : "Resolves Campaign IDs & Ad Group IDs for direct upload."}
+              {bulkFileName
+                  ? `✓ ${bulkFileName}`
+                  : "Attach your Amazon bulk file so harvested keywords can be routed to a real campaign and ad group."}
             </p>
             <input
               ref={bulkInputRef}
@@ -681,7 +692,7 @@ export const SearchTermHarvesting: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleHarvest([...state.selected])}
-              disabled={!state.selected.size}
+              disabled={!state.selected.size || !bulkIdIndex}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12.5px] font-semibold text-white btn-press disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "#A855F7" }}
             >
@@ -690,7 +701,7 @@ export const SearchTermHarvesting: React.FC = () => {
             </button>
             <button
               onClick={handleExport}
-              disabled={!harvestedCount}
+              disabled={!harvestedCount || !bulkIdIndex}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12.5px] font-semibold text-white btn-press disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "#10B981" }}
             >
@@ -705,6 +716,11 @@ export const SearchTermHarvesting: React.FC = () => {
             </button>
           </div>
         </div>
+        {!bulkIdIndex && (
+          <div className="mt-2 text-[11.5px] text-[#B45309]">
+            Attach your Amazon bulk file so harvested keywords can be routed to a real campaign and ad group.
+          </div>
+        )}
         {dismissedRows.length > 0 && (
           <div className="mt-2 text-[11.5px] text-[#9CA3AF]">
             {dismissedRows.length} dismissed —{" "}
@@ -901,17 +917,53 @@ export const SearchTermHarvesting: React.FC = () => {
                       {r.harvested ? (
                         <span
                           className="block text-[12px] font-mono-nums text-[#374151] truncate"
-                          title={r.destinationCampaign}
+                          title={`${r.destinationCampaign} › ${r.destinationAdGroup}`}
                         >
-                          {r.destinationCampaign}
+                          {r.destinationCampaign} › {r.destinationAdGroup}
                         </span>
                       ) : (
-                        <Input
-                          value={r.destinationCampaign}
-                          onChange={(e) => dispatch({ type: "set-destination", id: r.id, value: e.target.value })}
-                          className="h-7 text-[12px] font-mono-nums"
-                          list={destinationOptions.length ? "harvest-destination-campaigns" : undefined}
-                        />
+                        <div className="flex flex-col gap-1">
+                          <select
+                            value={r.destinationCampaign}
+                            aria-label="Destination campaign"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              dispatch({ type: "set-destination", id: r.id, value });
+                              const groups = value ? (bulkIdIndex?.listAdGroups("SP", value) ?? []) : [];
+                              if (groups.length === 1) {
+                                dispatch({ type: "set-destination-adgroup", id: r.id, value: groups[0].name });
+                              }
+                            }}
+                            disabled={!bulkIdIndex}
+                            className="h-7 w-full rounded-md border border-[#E5E5EA] bg-white px-2 text-[12px] text-[#111827] disabled:opacity-40"
+                          >
+                            <option value="">Select campaign…</option>
+                            {destinationOptions.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={r.destinationAdGroup}
+                            aria-label="Destination ad group"
+                            onChange={(e) =>
+                              dispatch({ type: "set-destination-adgroup", id: r.id, value: e.target.value })
+                            }
+                            disabled={!bulkIdIndex || !r.destinationCampaign}
+                            className="h-7 w-full rounded-md border border-[#E5E5EA] bg-white px-2 text-[12px] text-[#111827] disabled:opacity-40"
+                          >
+                            <option value="">Select ad group…</option>
+                            {(r.destinationCampaign
+                              ? (bulkIdIndex?.listAdGroups("SP", r.destinationCampaign) ?? [])
+                              : []
+                            ).map((ag) => (
+                              <option key={ag.name} value={ag.name}>
+                                {ag.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       )}
                     </td>
                     <td className="px-3 py-2.5">

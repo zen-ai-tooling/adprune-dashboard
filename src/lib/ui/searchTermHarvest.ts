@@ -264,9 +264,10 @@ export const buildHarvestBulkWorkbook = ({
 
   // 2. Negative rows — dedup by (source campaign + ad group + cleanedTerm).
   const negKey = (r: HarvestRow) => `${r.campaignName}||${r.adGroupName}||${r.cleanedTerm}`;
-  const negWinners = new Map<string, HarvestRow>();
+const negWinners = new Map<string, HarvestRow>();
   for (const r of rows) {
     if (r.dismissed || !r.harvested) continue;
+    if (!r.destinationCampaign.trim() || !r.destinationAdGroup.trim()) continue;
     const k = negKey(r);
     if (!negWinners.has(k)) negWinners.set(k, r);
   }
@@ -274,15 +275,16 @@ export const buildHarvestBulkWorkbook = ({
   if (dupsRemoved > 0) warnings.push(`Removed ${dupsRemoved} duplicate exact keyword entries`);
 
   // Build rows
-  const built: BuiltRow[] = [];
+const built: BuiltRow[] = [];
   let destinationsMissing = 0;
+  let unresolvedRows = 0;
   let bidsCapped = 0;
   const campaignsAffected = new Set<string>();
 
   for (const r of exactWinners.values()) {
     if (!r.destinationCampaign.trim() || !r.destinationAdGroup.trim()) {
       warnings.push(`Skipped "${r.cleanedTerm}" — no destination campaign and ad group selected.`);
-      destinationsMissing++;
+      unresolvedRows++;
       continue;
     }
     const rawBid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;

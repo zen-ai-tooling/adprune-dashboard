@@ -303,5 +303,14 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
     listCampaignNames(product: "SP" | "SB" | "SD"): string[] {
       return Array.from(campaignNamesByProduct[product]).sort();
     },
+
+    listAdGroups(product: "SP" | "SB" | "SD", campaignName: string): { name: string; id: string }[] {
+      const key = `${product}|${normalizeText(campaignName)}`;
+      const agMap = adGroupsByCampaign.get(key);
+      if (!agMap) return [];
+      return Array.from(agMap.entries())
+        .map(([name, id]) => ({ name, id }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
   };
 }

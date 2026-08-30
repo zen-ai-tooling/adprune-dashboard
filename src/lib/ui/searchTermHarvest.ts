@@ -280,16 +280,14 @@ export const buildHarvestBulkWorkbook = ({
   const campaignsAffected = new Set<string>();
 
   for (const r of exactWinners.values()) {
-    const rawBid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
-    const bid = Math.min(rawBid, bidCap);
-    if (rawBid > bidCap) bidsCapped++;
     if (!r.destinationCampaign.trim() || !r.destinationAdGroup.trim()) {
-      warnings.push(
-        `Skipped "${r.cleanedTerm}" — no destination campaign and ad group selected.`,
-      );
+      warnings.push(`Skipped "${r.cleanedTerm}" — no destination campaign and ad group selected.`);
       destinationsMissing++;
       continue;
     }
+    const rawBid = Number.isFinite(r.cpc) && r.cpc > 0 ? Math.max(r.cpc, 0.02) : defaultBid;
+    const bid = Math.min(rawBid, bidCap);
+    if (rawBid > bidCap) bidsCapped++;
     const destMatch = bulkIdIndex?.findCampaign("SP", r.destinationCampaign);
     if (bulkIdIndex && !destMatch) destinationsMissing++;
     const destAdGroupId =

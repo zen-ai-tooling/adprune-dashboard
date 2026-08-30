@@ -82,6 +82,8 @@ export function buildBulkIdIndexFromWorkbook(workbook: XLSX.WorkBook): BulkIdInd
   const campaignIndex = new Map<string, BulkIdMatch>();
   const keywordIndex = new Map<string, BulkIdMatch>();
   const targetingIndex = new Map<string, BulkIdMatch>();
+  // key: `${product}|${normalizeText(campaignName)}` → Map<original adGroupName, adGroupId>
+  const adGroupsByCampaign = new Map<string, Map<string, string>>();
   const campaignNamesByProduct: Record<"SP" | "SB" | "SD", Set<string>> = {
     SP: new Set(),
     SB: new Set(),
